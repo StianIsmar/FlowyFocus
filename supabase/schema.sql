@@ -12,6 +12,13 @@ begin
   end if;
 end$$;
 
+do $$
+begin
+  if not exists (select 1 from pg_type where typname = 'task_status') then
+    create type task_status as enum ('todo', 'in_progress', 'done');
+  end if;
+end$$;
+
 -- --- Tables --------------------------------------------------------------
 create table if not exists public.groups (
   id         uuid primary key default gen_random_uuid(),
@@ -32,6 +39,7 @@ create table if not exists public.tasks (
   due_date     date,
   is_done      boolean not null default false,
   subtasks     jsonb not null default '[]'::jsonb,
+  images       jsonb not null default '[]'::jsonb,
   position     integer not null default 0,
   completed_at timestamptz,
   created_at   timestamptz not null default now()
@@ -53,6 +61,14 @@ create index if not exists tasks_group_idx on public.tasks (group_id, position);
 create index if not exists tasks_user_idx  on public.tasks (user_id);
 create index if not exists notes_group_idx on public.notes (group_id, updated_at desc);
 create index if not exists notes_user_idx  on public.notes (user_id);
+
+-- --- Kanban status (added after initial release) -------------------------
+alter table public.tasks add column if not exists status task_status not null default 'todo';
+update public.tasks set status = 'done' where is_done = true and status <> 'done';
+create index if not exists tasks_status_idx on public.tasks (group_id, status, position);
+
+-- --- Task pictures (added after initial release) -------------------------
+alter table public.tasks add column if not exists images jsonb not null default '[]'::jsonb;
 
 -- --- updated_at trigger for notes ---------------------------------------
 create or replace function public.set_updated_at()

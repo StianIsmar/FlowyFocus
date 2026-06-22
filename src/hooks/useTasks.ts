@@ -16,9 +16,8 @@ export function useTasks(groupId: string | undefined) {
       .from('tasks')
       .select('*')
       .eq('group_id', groupId)
-      .order('is_done', { ascending: true })
       .order('position', { ascending: true })
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: true })
     if (error) setError(error.message)
     else setTasks(data as Task[])
     setLoading(false)
@@ -39,6 +38,8 @@ export function useTasks(groupId: string | undefined) {
         priority: input.priority ?? 'medium',
         due_date: input.due_date ?? null,
         subtasks: input.subtasks ?? [],
+        status: input.status ?? 'todo',
+        is_done: (input.status ?? 'todo') === 'done',
         position: tasks.length,
       }
       const { data, error } = await supabase
@@ -72,6 +73,16 @@ export function useTasks(groupId: string | undefined) {
     [updateTask],
   )
 
+  const setStatus = useCallback(
+    (task: Task, status: Task['status']) =>
+      updateTask(task.id, {
+        status,
+        is_done: status === 'done',
+        completed_at: status === 'done' ? new Date().toISOString() : null,
+      }),
+    [updateTask],
+  )
+
   const setSubtasks = useCallback(
     (task: Task, subtasks: Subtask[]) => updateTask(task.id, { subtasks }),
     [updateTask],
@@ -90,6 +101,7 @@ export function useTasks(groupId: string | undefined) {
     createTask,
     updateTask,
     toggleDone,
+    setStatus,
     setSubtasks,
     deleteTask,
     reload: load,

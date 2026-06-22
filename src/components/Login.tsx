@@ -1,24 +1,141 @@
+import { useState } from 'react'
 import { useAuth } from '../context/AuthProvider'
 
+type AuthMode = 'sign-in' | 'sign-up'
+
 export default function Login() {
-  const { signInWithGoogle } = useAuth()
+  const { signInWithGoogle, signInWithPassword, signUpWithPassword } = useAuth()
+  const [mode, setMode] = useState<AuthMode>('sign-in')
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    setNotice(null)
+    setBusy(true)
+
+    try {
+      if (mode === 'sign-up') {
+        const trimmedName = name.trim()
+        if (!trimmedName) throw new Error('Choose a username first.')
+        const { needsConfirmation } = await signUpWithPassword(trimmedName, email.trim(), password)
+        if (needsConfirmation) {
+          setNotice('Account created. Check your email to confirm it, then sign in here.')
+        }
+      } else {
+        await signInWithPassword(email.trim(), password)
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong. Try again.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const switchMode = (next: AuthMode) => {
+    setMode(next)
+    setError(null)
+    setNotice(null)
+  }
 
   return (
     <div className="login">
-      <div className="login-card">
-        <div className="login-mark" aria-hidden>
-          ✦
+      <div className="login-shell">
+        <div className="login-art" aria-hidden>
+          <img src="/CDC08322.jpg" alt="" />
+          <div className="login-art-copy">
+            <span className="login-kicker">quiet sky</span>
+            <span className="login-art-title">focus below the noise</span>
+          </div>
         </div>
-        <h1>Focus</h1>
-        <p className="login-sub">
-          Notes &amp; to-dos, one group at a time. No noise — just what you’re
-          working on right now.
-        </p>
-        <button className="btn-google" onClick={signInWithGoogle}>
-          <GoogleIcon />
-          Continue with Google
-        </button>
-        <p className="login-fine">Your data is private to your account.</p>
+        <div className="login-card">
+          <div className="login-mark" aria-hidden>
+            ✦
+          </div>
+          <h1>Focus</h1>
+          <p className="login-sub">
+            Notes &amp; to-dos, one group at a time. No noise — just what you’re
+            working on right now.
+          </p>
+
+          <div className="auth-tabs" role="tablist" aria-label="Login options">
+            <button
+              className={mode === 'sign-in' ? 'auth-tab active' : 'auth-tab'}
+              type="button"
+              onClick={() => switchMode('sign-in')}
+            >
+              Sign in
+            </button>
+            <button
+              className={mode === 'sign-up' ? 'auth-tab active' : 'auth-tab'}
+              type="button"
+              onClick={() => switchMode('sign-up')}
+            >
+              Create account
+            </button>
+          </div>
+
+          <form className="auth-form" onSubmit={submit}>
+            {mode === 'sign-up' && (
+              <label className="auth-field">
+                <span>Username</span>
+                <input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  autoComplete="name"
+                  placeholder="Your name"
+                  maxLength={80}
+                  required
+                />
+              </label>
+            )}
+
+            <label className="auth-field">
+              <span>Email</span>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+                placeholder="you@example.com"
+                required
+              />
+            </label>
+
+            <label className="auth-field">
+              <span>Password</span>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete={mode === 'sign-up' ? 'new-password' : 'current-password'}
+                placeholder="••••••••"
+                minLength={6}
+                required
+              />
+            </label>
+
+            {error && <p className="auth-message error">{error}</p>}
+            {notice && <p className="auth-message success">{notice}</p>}
+
+            <button className="btn-primary block" type="submit" disabled={busy}>
+              {busy ? 'Working…' : mode === 'sign-up' ? 'Create account' : 'Sign in'}
+            </button>
+          </form>
+
+          <div className="auth-divider">or</div>
+
+          <button className="btn-google" onClick={signInWithGoogle}>
+            <GoogleIcon />
+            Continue with Google
+          </button>
+          <p className="login-fine">Your data is private to your account.</p>
+        </div>
       </div>
     </div>
   )

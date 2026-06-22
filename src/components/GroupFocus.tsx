@@ -1,44 +1,62 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import type { Group } from '../types'
 import { GROUP_COLORS } from '../types'
+import { useAuth } from '../context/AuthProvider'
 import { useTasks } from '../hooks/useTasks'
-import TaskComposer from './TaskComposer'
-import TaskItem from './TaskItem'
+import TasksView from './TasksView'
 import NotesPanel from './NotesPanel'
 
 interface Props {
   groups: Group[]
   onUpdateGroup: (id: string, patch: Partial<Pick<Group, 'name' | 'color'>>) => void
   onDeleteGroup: (id: string) => void
+  onTasksChanged?: () => void
 }
 
 type Tab = 'tasks' | 'notes'
 
-export default function GroupFocus({ groups, onUpdateGroup, onDeleteGroup }: Props) {
+export default function GroupFocus({ groups, onUpdateGroup, onDeleteGroup, onTasksChanged }: Props) {
   const { groupId } = useParams()
   const navigate = useNavigate()
+  const { user } = useAuth()
   const group = groups.find((g) => g.id === groupId)
   const [tab, setTab] = useState<Tab>('tasks')
   const [settingsOpen, setSettingsOpen] = useState(false)
 
+  const firstName =
+    ((user?.user_metadata?.full_name as string | undefined)?.split(' ')[0]) ??
+    user?.email?.split('@')[0] ??
+    'there'
+
   const {
     tasks,
     loading,
+    error,
     createTask,
     updateTask,
-    toggleDone,
+    setStatus,
     setSubtasks,
     deleteTask,
   } = useTasks(groupId)
 
-  const { open, done } = useMemo(
-    () => ({
-      open: tasks.filter((t) => !t.is_done),
-      done: tasks.filter((t) => t.is_done),
-    }),
-    [tasks],
-  )
+  const bump = onTasksChanged ?? (() => {})
+  const createTaskAndSync: typeof createTask = async (input) => {
+    await createTask(input)
+    bump()
+  }
+  const updateTaskAndSync: typeof updateTask = async (id, patch) => {
+    await updateTask(id, patch)
+    bump()
+  }
+  const setStatusAndSync: typeof setStatus = async (task, status) => {
+    await setStatus(task, status)
+    bump()
+  }
+  const deleteTaskAndSync: typeof deleteTask = async (id) => {
+    await deleteTask(id)
+    bump()
+  }
 
   if (!group) {
     return (
@@ -53,17 +71,24 @@ export default function GroupFocus({ groups, onUpdateGroup, onDeleteGroup }: Pro
   return (
     <div className="focus" style={{ ['--accent' as string]: accent }}>
       <header className="focus-header">
-        <div className="focus-title">
-          <span className="focus-dot" style={{ background: accent }} />
-          <h1>{group.name}</h1>
-          <span className="focus-count">{open.length} open</span>
+        <div className="greeting">
+          <h1 className="hello">
+            Welcome back, <span className="grad">{firstName}</span> 
+          </h1>
         </div>
         <div className="focus-tabs">
+          <span className="topbar-date">
+            {new Date().toLocaleDateString(undefined, {
+              day: 'numeric',
+              month: 'short',
+              year: 'numeric',
+            })}
+          </span>
           <button
             className={tab === 'tasks' ? 'tab active' : 'tab'}
             onClick={() => setTab('tasks')}
           >
-            Tasks
+            Board
           </button>
           <button
             className={tab === 'notes' ? 'tab active' : 'tab'}
@@ -94,46 +119,16 @@ export default function GroupFocus({ groups, onUpdateGroup, onDeleteGroup }: Pro
       )}
 
       {tab === 'tasks' ? (
-        <div className="tasks">
-          <TaskComposer accent={accent} onCreate={createTask} />
-
-          {loading && tasks.length === 0 && <div className="muted small pad">Loading…</div>}
-
-          {open.length === 0 && !loading && (
-            <p className="muted pad">Nothing here yet. Add your first task above.</p>
-          )}
-
-          <ul className="task-list">
-            {open.map((t) => (
-              <TaskItem
-                key={t.id}
-                task={t}
-                onToggle={toggleDone}
-                onUpdate={updateTask}
-                onSubtasks={setSubtasks}
-                onDelete={deleteTask}
-              />
-            ))}
-          </ul>
-
-          {done.length > 0 && (
-            <details className="done-section">
-              <summary>Completed ({done.length})</summary>
-              <ul className="task-list">
-                {done.map((t) => (
-                  <TaskItem
-                    key={t.id}
-                    task={t}
-                    onToggle={toggleDone}
-                    onUpdate={updateTask}
-                    onSubtasks={setSubtasks}
-                    onDelete={deleteTask}
-                  />
-                ))}
-              </ul>
-            </details>
-          )}
-        </div>
+        <TasksView
+          tasks={tasks}
+          loading={loading}
+          error={error}
+          onCreate={createTaskAndSync}
+          onUpdate={updateTaskAndSync}
+          onSetStatus={setStatusAndSync}
+          onSetSubtasks={setSubtasks}
+          onDelete={deleteTaskAndSync}
+        />
       ) : (
         <NotesPanel groupId={group.id} accent={accent} />
       )}
@@ -154,6 +149,14 @@ function GroupSettings({
 }) {
   const [name, setName] = useState(group.name)
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
+
   return (
     <div className="group-settings">
       <input
@@ -161,6 +164,13 @@ function GroupSettings({
         value={name}
         maxLength={80}
         onChange={(e) => setName(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault()
+            if (name.trim() && name !== group.name) onUpdate(group.id, { name: name.trim() })
+            onClose()
+          }
+        }}
         onBlur={() => name.trim() && name !== group.name && onUpdate(group.id, { name: name.trim() })}
       />
       <div className="swatches">
@@ -187,6 +197,7 @@ function GroupSettings({
         </button>
         <button className="link-btn" onClick={onClose}>
           Done
+          <span className="enter-hint" aria-hidden>↵</span>
         </button>
       </div>
     </div>

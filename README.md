@@ -1,4 +1,4 @@
-# Focus — Personal Notes & To-Do
+# FlowyFocus
 
 A calm, single-group-at-a-time notes and to-do app.
 
@@ -63,8 +63,9 @@ src/
     Login.tsx                Google sign-in screen
     GroupSwitcher.tsx        collapsible group rail
     GroupFocus.tsx           the one-group full-screen focus view
-    TaskComposer.tsx         add-task form (priority/due/notes)
-    TaskItem.tsx             task row + sub-tasks
+    KanbanBoard.tsx          To do / In progress / Done columns + drag & drop
+    TaskCard.tsx             draggable task card
+    TaskEditor.tsx           task detail modal (status/priority/due/checklist)
     NotesPanel.tsx           per-group notes with autosave
   lib/supabase.ts            Supabase client
   types.ts                   shared types

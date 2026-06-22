@@ -34,6 +34,7 @@ export default function EmptyState({ onCreate, loading }: Props) {
           />
           <button className="btn-primary" disabled={loading || !name.trim()}>
             Create
+            <span className="enter-hint" aria-hidden>↵</span>
           </button>
         </form>
       </div>
