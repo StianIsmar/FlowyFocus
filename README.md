@@ -1,4 +1,7 @@
 # FlowyFocus
+<img width="1715" height="979" alt="image" src="https://github.com/user-attachments/assets/1823f203-04e9-4856-bfc0-4161983144c9" />
+<img width="1725" height="985" alt="image" src="https://github.com/user-attachments/assets/b7ab6691-fa67-4b67-9059-d3e9f3c27ea0" />
+
 
 A calm, single-group-at-a-time notes and to-do app.
 
