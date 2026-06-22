@@ -1,9 +1,10 @@
 # FlowyFocus
-<img width="1715" height="979" alt="image" src="https://github.com/user-attachments/assets/1823f203-04e9-4856-bfc0-4161983144c9" />
-<img width="1725" height="985" alt="image" src="https://github.com/user-attachments/assets/b7ab6691-fa67-4b67-9059-d3e9f3c27ea0" />
 
+<img width="560" alt="FlowyFocus logo" src="public/logo.svg" />
 
 A calm, single-group-at-a-time notes and to-do app.
+
+**Live site:** <https://personal-notes.vercel.app>
 
 - **Frontend:** Vite + React + TypeScript → deployed on **Vercel**
 - **Backend:** **Supabase** (Postgres + Auth + Row-Level Security) — no server to run
@@ -12,6 +13,26 @@ A calm, single-group-at-a-time notes and to-do app.
   view exactly one group at a time, full-screen, distraction-free.
 
 See [DECISIONS.md](DECISIONS.md) for the full design rationale.
+
+---
+
+## Features
+
+- **Group-focused workspace:** organise notes and tasks by group, then focus on one group at a time.
+- **Kanban task board:** move tasks between To do, In progress, and Done with drag and drop.
+- **Task details:** add priorities, due dates, descriptions, subtasks, and attached images.
+- **Pomodoro timer:** keep a focused work rhythm inside the same workspace.
+- **Progress dashboard:** scan group stats, workload, and completion signals at a glance.
+- **Autosaved notes:** write notes per group with Supabase-backed persistence.
+- **Secure accounts:** sign in with Google or email/password through Supabase Auth and RLS.
+
+---
+
+## Screenshots
+
+<img width="720" alt="FlowyFocus workspace screenshot" src="https://github.com/user-attachments/assets/1823f203-04e9-4856-bfc0-4161983144c9" />
+
+<img width="720" alt="FlowyFocus task view screenshot" src="https://github.com/user-attachments/assets/b7ab6691-fa67-4b67-9059-d3e9f3c27ea0" />
 
 ---
 
