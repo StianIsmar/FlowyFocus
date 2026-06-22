@@ -4,7 +4,7 @@
 
 A calm, single-group-at-a-time notes and to-do app.
 
-**Live site:** <https://personal-notes.vercel.app>
+**Live site:** <https://personal-notes-tan-ten.vercel.app/>
 
 - **Frontend:** Vite + React + TypeScript → deployed on **Vercel**
 - **Backend:** **Supabase** (Postgres + Auth + Row-Level Security) — no server to run
