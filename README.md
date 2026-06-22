@@ -1,6 +1,8 @@
 # FlowyFocus
 
-<img width="560" alt="FlowyFocus logo" src="public/logo.svg" />
+<p align="center">
+   <img width="560" alt="FlowyFocus logo" src="public/logo.svg" />
+</p>
 
 A calm, single-group-at-a-time notes and to-do app.
 
