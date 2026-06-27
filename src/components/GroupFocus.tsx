@@ -9,8 +9,8 @@ import NotesPanel from './NotesPanel'
 
 interface Props {
   groups: Group[]
-  onUpdateGroup: (id: string, patch: Partial<Pick<Group, 'name' | 'color'>>) => void
-  onDeleteGroup: (id: string) => void
+  onUpdateGroup: (id: string, patch: Partial<Pick<Group, 'name' | 'color'>>) => Promise<boolean>
+  onDeleteGroup: (id: string) => Promise<boolean>
   onTasksChanged?: () => void
 }
 
@@ -111,9 +111,9 @@ export default function GroupFocus({ groups, onUpdateGroup, onDeleteGroup, onTas
           group={group}
           onUpdate={onUpdateGroup}
           onClose={() => setSettingsOpen(false)}
-          onDeleted={() => {
-            onDeleteGroup(group.id)
-            navigate('/', { replace: true })
+          onDeleted={async () => {
+            const deleted = await onDeleteGroup(group.id)
+            if (deleted) navigate('/', { replace: true })
           }}
         />
       )}
@@ -145,7 +145,7 @@ function GroupSettings({
   group: Group
   onUpdate: Props['onUpdateGroup']
   onClose: () => void
-  onDeleted: () => void
+  onDeleted: () => Promise<void>
 }) {
   const [name, setName] = useState(group.name)
 

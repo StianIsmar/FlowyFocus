@@ -49,20 +49,36 @@ export function useGroups() {
 
   const updateGroup = useCallback(
     async (id: string, patch: Partial<Pick<Group, 'name' | 'color'>>) => {
-      setGroups((g) => g.map((x) => (x.id === id ? { ...x, ...patch } : x)))
+      let previous: Group[] = []
+      setGroups((g) => {
+        previous = g
+        return g.map((x) => (x.id === id ? { ...x, ...patch } : x))
+      })
       const { error } = await supabase.from('groups').update(patch).eq('id', id)
       if (error) {
         setError(error.message)
-        load()
+        setGroups(previous)
+        await load()
+        return false
       }
+      return true
     },
     [load],
   )
 
   const deleteGroup = useCallback(async (id: string) => {
-    setGroups((g) => g.filter((x) => x.id !== id))
+    let previous: Group[] = []
+    setGroups((g) => {
+      previous = g
+      return g.filter((x) => x.id !== id)
+    })
     const { error } = await supabase.from('groups').delete().eq('id', id)
-    if (error) setError(error.message)
+    if (error) {
+      setError(error.message)
+      setGroups(previous)
+      return false
+    }
+    return true
   }, [])
 
   return { groups, loading, error, createGroup, updateGroup, deleteGroup, reload: load }

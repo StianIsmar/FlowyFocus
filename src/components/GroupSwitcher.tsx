@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { NavLink } from 'react-router-dom'
+import { useState, type FormEvent } from 'react'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthProvider'
 import type { Group } from '../types'
 import Pomodoro from './Pomodoro'
@@ -9,24 +9,67 @@ interface Props {
   loading: boolean
   stats: Record<string, number[]>
   onCreate: (name: string) => Promise<Group | null>
-  onUpdate: (id: string, patch: Partial<Pick<Group, 'name' | 'color'>>) => void
-  onDelete: (id: string) => void
+  onUpdate: (id: string, patch: Partial<Pick<Group, 'name' | 'color'>>) => Promise<boolean>
+  onDelete: (id: string) => Promise<boolean>
 }
 
-export default function GroupSwitcher({ groups, loading, onCreate }: Props) {
+export default function GroupSwitcher({ groups, loading, onCreate, onUpdate, onDelete }: Props) {
   const { user, signOut } = useAuth()
+  const location = useLocation()
+  const navigate = useNavigate()
   const [collapsed, setCollapsed] = useState(false)
   const [adding, setAdding] = useState(false)
   const [name, setName] = useState('')
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingName, setEditingName] = useState('')
+  const [pendingId, setPendingId] = useState<string | null>(null)
   const [focusActive, setFocusActive] = useState(false)
 
-  const submit = async (e: React.FormEvent) => {
+  const submit = async (e: FormEvent) => {
     e.preventDefault()
     const trimmed = name.trim()
     if (!trimmed) return
     await onCreate(trimmed)
     setName('')
     setAdding(false)
+  }
+
+  const beginEdit = (group: Group) => {
+    setAdding(false)
+    setEditingId(group.id)
+    setEditingName(group.name)
+  }
+
+  const cancelEdit = () => {
+    setEditingId(null)
+    setEditingName('')
+  }
+
+  const submitEdit = async (e: FormEvent, group: Group) => {
+    e.preventDefault()
+    const trimmed = editingName.trim()
+    if (!trimmed) return
+    if (trimmed === group.name) {
+      cancelEdit()
+      return
+    }
+    setPendingId(group.id)
+    const saved = await onUpdate(group.id, { name: trimmed })
+    setPendingId(null)
+    if (saved) cancelEdit()
+  }
+
+  const deleteGroup = async (group: Group) => {
+    if (!confirm(`Delete "${group.name}" and all its tasks and notes?`)) return
+    setPendingId(group.id)
+    const deleted = await onDelete(group.id)
+    setPendingId(null)
+    if (!deleted) return
+
+    if (location.pathname === `/g/${group.id}`) {
+      const next = groups.find((g) => g.id !== group.id)
+      navigate(next ? `/g/${next.id}` : '/', { replace: true })
+    }
   }
 
   return (
@@ -74,17 +117,57 @@ export default function GroupSwitcher({ groups, loading, onCreate }: Props) {
         </NavLink>
 
         {loading && groups.length === 0 && <div className="muted small">Loading…</div>}
-        {groups.map((g) => (
-          <NavLink
-            key={g.id}
-            to={`/g/${g.id}`}
-            className={({ isActive }) => `group-pill ${isActive ? 'active' : ''}`}
-            title={g.name}
-          >
-            <span className="group-dot" style={{ background: g.color, color: g.color }} />
-            {!collapsed && <span className="group-name">{g.name}</span>}
-          </NavLink>
-        ))}
+        {groups.map((g) => {
+          const isEditing = editingId === g.id && !collapsed
+          const isPending = pendingId === g.id
+
+          if (isEditing) {
+            return (
+              <form key={g.id} className="group-edit-form" onSubmit={(e) => submitEdit(e, g)}>
+                <span className="group-dot" style={{ background: g.color, color: g.color }} />
+                <input
+                  autoFocus
+                  value={editingName}
+                  onChange={(e) => setEditingName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') cancelEdit()
+                  }}
+                  disabled={isPending}
+                  maxLength={80}
+                />
+                <button className="group-action" type="submit" disabled={isPending} title="Save group name">
+                  ✓
+                </button>
+                <button className="group-action" type="button" onClick={cancelEdit} disabled={isPending} title="Cancel edit">
+                  ×
+                </button>
+              </form>
+            )
+          }
+
+          return (
+            <div key={g.id} className="group-row">
+              <NavLink
+                to={`/g/${g.id}`}
+                className={({ isActive }) => `group-pill ${isActive ? 'active' : ''}`}
+                title={g.name}
+              >
+                <span className="group-dot" style={{ background: g.color, color: g.color }} />
+                {!collapsed && <span className="group-name">{g.name}</span>}
+              </NavLink>
+              {!collapsed && (
+                <span className="group-actions">
+                  <button className="group-action" type="button" onClick={() => beginEdit(g)} disabled={isPending} title="Edit group name">
+                    ✎
+                  </button>
+                  <button className="group-action danger" type="button" onClick={() => deleteGroup(g)} disabled={isPending} title="Delete group">
+                    ×
+                  </button>
+                </span>
+              )}
+            </div>
+          )
+        })}
 
         {adding && !collapsed ? (
           <form className="group-add-form" onSubmit={submit}>

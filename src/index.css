@@ -272,6 +272,16 @@ select:focus {
   width: 100%;
   text-align: left;
 }
+.group-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-radius: var(--radius-sm);
+}
+.group-row .group-pill {
+  min-width: 0;
+  padding-right: 58px;
+}
 .group-pill:hover,
 .group-add:hover {
   background: var(--bg-elev-2);
@@ -298,6 +308,61 @@ select:focus {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
+}
+.group-actions {
+  position: absolute;
+  right: 7px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+}
+.group-row:hover .group-actions,
+.group-row:focus-within .group-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+.group-action {
+  width: 23px;
+  height: 23px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1;
+}
+.group-action:hover {
+  background: var(--bg-elev-2);
+  color: var(--text);
+  border-color: var(--line);
+}
+.group-action.danger:hover {
+  color: #f87171;
+}
+.group-action:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.group-edit-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-elev-2);
+}
+.group-edit-form input {
+  min-width: 0;
+  flex: 1;
+  height: 28px;
+  padding: 4px 8px;
+  font-size: 14px;
 }
 .group-add-icon {
   width: 14px;
@@ -860,8 +925,12 @@ select:focus {
   }
   .switcher .switcher-title,
   .switcher .group-name,
+  .switcher .group-actions,
   .switcher .user-meta {
     display: none;
+  }
+  .switcher .group-row .group-pill {
+    padding-right: 10px;
   }
 }
 
@@ -1930,6 +1999,9 @@ body {
 }
 .switcher.is-collapsed .group-pill {
   justify-content: center;
+}
+.switcher.is-collapsed .group-row .group-pill {
+  padding-right: 10px;
 }
 
 .dashboard {
