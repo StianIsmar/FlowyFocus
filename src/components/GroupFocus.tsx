@@ -1,7 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import type { Group } from '../types'
-import { GROUP_COLORS } from '../types'
 import { useAuth } from '../context/AuthProvider'
 import { useTasks } from '../hooks/useTasks'
 import TasksView from './TasksView'
@@ -22,7 +21,9 @@ export default function GroupFocus({ groups, onUpdateGroup, onDeleteGroup, onTas
   const { user } = useAuth()
   const group = groups.find((g) => g.id === groupId)
   const [tab, setTab] = useState<Tab>('tasks')
-  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [editingGroupName, setEditingGroupName] = useState(false)
+  const [groupName, setGroupName] = useState('')
+  const [groupActionPending, setGroupActionPending] = useState(false)
 
   const firstName =
     ((user?.user_metadata?.full_name as string | undefined)?.split(' ')[0]) ??
@@ -58,6 +59,39 @@ export default function GroupFocus({ groups, onUpdateGroup, onDeleteGroup, onTas
     bump()
   }
 
+  useEffect(() => {
+    setGroupName(group?.name ?? '')
+    setEditingGroupName(false)
+    setGroupActionPending(false)
+  }, [group?.id, group?.name])
+
+  const saveGroupName = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!group) return
+    const trimmed = groupName.trim()
+    if (!trimmed) return
+    if (trimmed === group.name) {
+      setEditingGroupName(false)
+      return
+    }
+
+    setGroupActionPending(true)
+    const saved = await onUpdateGroup(group.id, { name: trimmed })
+    setGroupActionPending(false)
+    if (saved) setEditingGroupName(false)
+  }
+
+  const deleteCurrentGroup = async () => {
+    if (!group) return
+    if (!confirm(`Delete "${group.name}" and all its tasks and notes?`)) return
+
+    const next = groups.find((g) => g.id !== group.id)
+    setGroupActionPending(true)
+    const deleted = await onDeleteGroup(group.id)
+    setGroupActionPending(false)
+    if (deleted) navigate(next ? `/g/${next.id}` : '/', { replace: true })
+  }
+
   if (!group) {
     return (
       <div className="empty-state">
@@ -71,10 +105,69 @@ export default function GroupFocus({ groups, onUpdateGroup, onDeleteGroup, onTas
   return (
     <div className="focus" style={{ ['--accent' as string]: accent }}>
       <header className="focus-header">
-        <div className="greeting">
-          <h1 className="hello">
-            Welcome back, <span className="grad">{firstName}</span> 
-          </h1>
+        <div className="focus-current-group">
+          <span className="focus-eyebrow">Current group</span>
+          {editingGroupName ? (
+            <form className="focus-group-edit" onSubmit={saveGroupName}>
+              <span className="focus-dot" style={{ background: accent }} />
+              <input
+                autoFocus
+                value={groupName}
+                onChange={(e) => setGroupName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    setGroupName(group.name)
+                    setEditingGroupName(false)
+                  }
+                }}
+                disabled={groupActionPending}
+                maxLength={80}
+              />
+              <button className="group-action" type="submit" disabled={groupActionPending} title="Save group name">
+                ✓
+              </button>
+              <button
+                className="group-action"
+                type="button"
+                disabled={groupActionPending}
+                title="Cancel edit"
+                onClick={() => {
+                  setGroupName(group.name)
+                  setEditingGroupName(false)
+                }}
+              >
+                ×
+              </button>
+            </form>
+          ) : (
+            <div className="focus-group-title-row">
+              <span className="focus-dot" style={{ background: accent }} />
+              <h1>{group.name}</h1>
+              <div className="focus-group-actions">
+                <button
+                  className="group-action"
+                  type="button"
+                  disabled={groupActionPending}
+                  title="Edit group name"
+                  onClick={() => setEditingGroupName(true)}
+                >
+                  ✎
+                </button>
+                <button
+                  className="group-action danger"
+                  type="button"
+                  disabled={groupActionPending}
+                  title="Delete group"
+                  onClick={deleteCurrentGroup}
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+          )}
+          <p className="focus-greeting">
+            Welcome back, <span className="grad">{firstName}</span>
+          </p>
         </div>
         <div className="focus-tabs">
           <span className="topbar-date">
@@ -96,27 +189,8 @@ export default function GroupFocus({ groups, onUpdateGroup, onDeleteGroup, onTas
           >
             Notes
           </button>
-          <button
-            className="icon-btn"
-            title="Group settings"
-            onClick={() => setSettingsOpen((s) => !s)}
-          >
-            ⚙
-          </button>
         </div>
       </header>
-
-      {settingsOpen && (
-        <GroupSettings
-          group={group}
-          onUpdate={onUpdateGroup}
-          onClose={() => setSettingsOpen(false)}
-          onDeleted={async () => {
-            const deleted = await onDeleteGroup(group.id)
-            if (deleted) navigate('/', { replace: true })
-          }}
-        />
-      )}
 
       {tab === 'tasks' ? (
         <TasksView
@@ -132,74 +206,6 @@ export default function GroupFocus({ groups, onUpdateGroup, onDeleteGroup, onTas
       ) : (
         <NotesPanel groupId={group.id} accent={accent} />
       )}
-    </div>
-  )
-}
-
-function GroupSettings({
-  group,
-  onUpdate,
-  onClose,
-  onDeleted,
-}: {
-  group: Group
-  onUpdate: Props['onUpdateGroup']
-  onClose: () => void
-  onDeleted: () => Promise<void>
-}) {
-  const [name, setName] = useState(group.name)
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onClose])
-
-  return (
-    <div className="group-settings">
-      <input
-        className="settings-name"
-        value={name}
-        maxLength={80}
-        onChange={(e) => setName(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault()
-            if (name.trim() && name !== group.name) onUpdate(group.id, { name: name.trim() })
-            onClose()
-          }
-        }}
-        onBlur={() => name.trim() && name !== group.name && onUpdate(group.id, { name: name.trim() })}
-      />
-      <div className="swatches">
-        {GROUP_COLORS.map((c) => (
-          <button
-            key={c}
-            className={`swatch ${c === group.color ? 'sel' : ''}`}
-            style={{ background: c }}
-            aria-label={`Color ${c}`}
-            onClick={() => onUpdate(group.id, { color: c })}
-          />
-        ))}
-      </div>
-      <div className="settings-actions">
-        <button
-          className="link-btn danger"
-          onClick={() => {
-            if (confirm(`Delete "${group.name}" and all its tasks and notes?`)) {
-              onDeleted()
-            }
-          }}
-        >
-          Delete group
-        </button>
-        <button className="link-btn" onClick={onClose}>
-          Done
-          <span className="enter-hint" aria-hidden>↵</span>
-        </button>
-      </div>
     </div>
   )
 }

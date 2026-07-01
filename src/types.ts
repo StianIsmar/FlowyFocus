@@ -33,6 +33,7 @@ export interface Task {
   description: string
   priority: Priority
   due_date: string | null
+  is_important: boolean
   is_done: boolean
   status: TaskStatus
   subtasks: Subtask[]

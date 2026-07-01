@@ -13,6 +13,8 @@ interface Props {
   onSetStatus: (task: Task, status: TaskStatus) => void
   onSetSubtasks: (task: Task, subtasks: Subtask[]) => void
   onDelete: (id: string) => void
+  canCreate?: boolean
+  emptyMessage?: string
 }
 
 type View = 'board' | 'list'
@@ -26,6 +28,8 @@ export default function TasksView({
   onSetStatus,
   onSetSubtasks,
   onDelete,
+  canCreate = true,
+  emptyMessage,
 }: Props) {
   const [view, setView] = useState<View>('board')
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -56,7 +60,7 @@ export default function TasksView({
           <span className="error-hint">
             {' '}
             Re-run <code>supabase/schema.sql</code> in Supabase so the task <code>status</code>{' '}
-            column exists.
+            and <code>is_important</code> columns exist.
           </span>
         </div>
       )}
@@ -66,17 +70,23 @@ export default function TasksView({
           tasks={tasks}
           loading={loading}
           onCreate={onCreate}
+          onUpdate={onUpdate}
           onSetStatus={onSetStatus}
           onOpen={(t) => setEditingId(t.id)}
           onDelete={onDelete}
+          canCreate={canCreate}
+          emptyMessage={emptyMessage}
         />
       ) : (
         <TaskListView
           tasks={tasks}
           loading={loading}
           onCreate={onCreate}
+          onUpdate={onUpdate}
           onSetStatus={onSetStatus}
           onOpen={(t) => setEditingId(t.id)}
+          canCreate={canCreate}
+          emptyMessage={emptyMessage}
         />
       )}
 

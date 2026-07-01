@@ -201,6 +201,18 @@ export default function TaskEditor({
         </div>
 
         <div className="modal-grid">
+          <label className="mf important-field">
+            Very important
+            <button
+              className={task.is_important ? 'important-toggle field active' : 'important-toggle field'}
+              type="button"
+              aria-pressed={task.is_important}
+              onClick={() => onUpdate(task.id, { is_important: !task.is_important })}
+            >
+              <span aria-hidden>★</span>
+              {task.is_important ? 'Important' : 'Normal'}
+            </button>
+          </label>
           <label className="mf">
             Status
             <select

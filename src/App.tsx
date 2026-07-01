@@ -6,6 +6,7 @@ import { useTaskStats } from './hooks/useTaskStats'
 import Login from './components/Login'
 import GroupSwitcher from './components/GroupSwitcher'
 import GroupFocus from './components/GroupFocus'
+import ImportantFocus from './components/ImportantFocus'
 import Dashboard from './components/Dashboard'
 import EmptyState from './components/EmptyState'
 
@@ -41,8 +42,6 @@ function Shell() {
         loading={loading}
         stats={stats}
         onCreate={createGroup}
-        onUpdate={updateGroup}
-        onDelete={deleteGroup}
       />
       <main className="focus-area">
         <Routes>
@@ -61,6 +60,7 @@ function Shell() {
             }
           />
           <Route path="/dashboard" element={<Dashboard groups={groups} stats={stats} loading={loading} />} />
+          <Route path="/important" element={<ImportantFocus onTasksChanged={reloadStats} />} />
           <Route
             path="/g/:groupId"
             element={

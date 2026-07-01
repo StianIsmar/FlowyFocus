@@ -7,12 +7,25 @@ interface Props {
   tasks: Task[]
   loading: boolean
   onCreate: (input: Partial<Task> & { title: string }) => Promise<void>
+  onUpdate: (id: string, patch: Partial<Task>) => void
   onSetStatus: (task: Task, status: TaskStatus) => void
   onOpen: (task: Task) => void
   onDelete: (id: string) => void
+  canCreate?: boolean
+  emptyMessage?: string
 }
 
-export default function KanbanBoard({ tasks, loading, onCreate, onSetStatus, onOpen, onDelete }: Props) {
+export default function KanbanBoard({
+  tasks,
+  loading,
+  onCreate,
+  onUpdate,
+  onSetStatus,
+  onOpen,
+  onDelete,
+  canCreate = true,
+  emptyMessage = 'No tasks here yet.',
+}: Props) {
   const [addingCol, setAddingCol] = useState<TaskStatus | null>(null)
   const [draft, setDraft] = useState('')
   const [dragId, setDragId] = useState<string | null>(null)
@@ -53,15 +66,17 @@ export default function KanbanBoard({ tasks, loading, onCreate, onSetStatus, onO
                 <span className="col-dot" style={{ background: col.color, color: col.color }} />
                 {col.label} <span className="col-count">({colTasks.length})</span>
               </span>
-              <button
-                className="col-add"
-                onClick={() => {
-                  setAddingCol(col.id)
-                  setDraft('')
-                }}
-              >
-                + Add task
-              </button>
+              {canCreate && (
+                <button
+                  className="col-add"
+                  onClick={() => {
+                    setAddingCol(col.id)
+                    setDraft('')
+                  }}
+                >
+                  + Add task
+                </button>
+              )}
             </header>
 
             {addingCol === col.id && (
@@ -90,11 +105,12 @@ export default function KanbanBoard({ tasks, loading, onCreate, onSetStatus, onO
                   task={t}
                   onOpen={() => onOpen(t)}
                   onDelete={onDelete}
+                  onToggleImportant={() => onUpdate(t.id, { is_important: !t.is_important })}
                   onDragStart={() => setDragId(t.id)}
                   onDragEnd={() => setDragId(null)}
                 />
               ))}
-              {colTasks.length === 0 && addingCol !== col.id && (
+              {colTasks.length === 0 && addingCol !== col.id && canCreate && (
                 <button className="col-empty" onClick={() => setAddingCol(col.id)}>
                   + Add a task
                 </button>
@@ -105,6 +121,7 @@ export default function KanbanBoard({ tasks, loading, onCreate, onSetStatus, onO
       })}
 
       {loading && tasks.length === 0 && <div className="muted small pad">Loading…</div>}
+      {!loading && tasks.length === 0 && !canCreate && <div className="board-empty muted small pad">{emptyMessage}</div>}
     </div>
   )
 }

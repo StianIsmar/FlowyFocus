@@ -37,6 +37,7 @@ create table if not exists public.tasks (
   description  text not null default '',
   priority     task_priority not null default 'medium',
   due_date     date,
+  is_important boolean not null default false,
   is_done      boolean not null default false,
   subtasks     jsonb not null default '[]'::jsonb,
   images       jsonb not null default '[]'::jsonb,
@@ -66,6 +67,10 @@ create index if not exists notes_user_idx  on public.notes (user_id);
 alter table public.tasks add column if not exists status task_status not null default 'todo';
 update public.tasks set status = 'done' where is_done = true and status <> 'done';
 create index if not exists tasks_status_idx on public.tasks (group_id, status, position);
+
+-- --- Important tasks (virtual cross-group view) -------------------------
+alter table public.tasks add column if not exists is_important boolean not null default false;
+create index if not exists tasks_important_idx on public.tasks (user_id, is_important, status, position);
 
 -- --- Task pictures (added after initial release) -------------------------
 alter table public.tasks add column if not exists images jsonb not null default '[]'::jsonb;

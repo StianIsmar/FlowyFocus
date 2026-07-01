@@ -5,6 +5,7 @@ interface Props {
   task: Task
   onOpen: () => void
   onDelete: (id: string) => void
+  onToggleImportant: () => void
   onDragStart: () => void
   onDragEnd: () => void
 }
@@ -18,7 +19,7 @@ function fmtDate(d: string | null): string | null {
   })
 }
 
-export default function TaskCard({ task, onOpen, onDelete, onDragStart, onDragEnd }: Props) {
+export default function TaskCard({ task, onOpen, onDelete, onToggleImportant, onDragStart, onDragEnd }: Props) {
   const total = task.subtasks.length
   const doneCount = task.subtasks.filter((s) => s.done).length
   const due = fmtDate(task.due_date)
@@ -59,9 +60,19 @@ export default function TaskCard({ task, onOpen, onDelete, onDragStart, onDragEn
           <h3 className="card-title">{task.title}</h3>
           {subtitle && <p className="card-sub">{subtitle}</p>}
         </div>
-        <span className="card-menu" aria-hidden>
-          ⋯
-        </span>
+        <button
+          className={task.is_important ? 'important-toggle active' : 'important-toggle'}
+          type="button"
+          aria-label={task.is_important ? 'Unmark as very important' : 'Mark as very important'}
+          aria-pressed={task.is_important}
+          title={task.is_important ? 'Very important' : 'Mark as very important'}
+          onClick={(e) => {
+            e.stopPropagation()
+            onToggleImportant()
+          }}
+        >
+          ★
+        </button>
       </div>
 
       <div className="card-foot">
