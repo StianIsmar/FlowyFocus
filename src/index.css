@@ -1669,6 +1669,16 @@ body {
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 12px 14px;
+  cursor: grab;
+  user-select: none;
+}
+.todo-row:active {
+  cursor: grabbing;
+}
+.todo-row.drag-over {
+  border-color: var(--accent, #4f7cff);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent, #4f7cff) 55%, transparent);
+  background: color-mix(in srgb, var(--accent, #4f7cff) 5%, var(--bg-elev));
 }
 .todo-row .check {
   flex: 0 0 auto;

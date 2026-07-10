@@ -39,6 +39,7 @@ export default function GroupFocus({ groups, onUpdateGroup, onDeleteGroup, onTas
     setStatus,
     setSubtasks,
     deleteTask,
+    reorderTasks,
   } = useTasks(groupId)
 
   const bump = onTasksChanged ?? (() => {})
@@ -56,6 +57,10 @@ export default function GroupFocus({ groups, onUpdateGroup, onDeleteGroup, onTas
   }
   const deleteTaskAndSync: typeof deleteTask = async (id) => {
     await deleteTask(id)
+    bump()
+  }
+  const reorderTasksAndSync: typeof reorderTasks = async (ordered) => {
+    await reorderTasks(ordered)
     bump()
   }
 
@@ -202,6 +207,7 @@ export default function GroupFocus({ groups, onUpdateGroup, onDeleteGroup, onTas
           onSetStatus={setStatusAndSync}
           onSetSubtasks={setSubtasks}
           onDelete={deleteTaskAndSync}
+          onReorder={reorderTasksAndSync}
         />
       ) : (
         <NotesPanel groupId={group.id} accent={accent} />

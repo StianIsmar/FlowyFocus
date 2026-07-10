@@ -13,6 +13,7 @@ interface Props {
   onSetStatus: (task: Task, status: TaskStatus) => void
   onSetSubtasks: (task: Task, subtasks: Subtask[]) => void
   onDelete: (id: string) => void
+  onReorder?: (tasks: Task[]) => Promise<void>
   canCreate?: boolean
   emptyMessage?: string
 }
@@ -28,6 +29,7 @@ export default function TasksView({
   onSetStatus,
   onSetSubtasks,
   onDelete,
+  onReorder,
   canCreate = true,
   emptyMessage,
 }: Props) {
@@ -84,6 +86,7 @@ export default function TasksView({
           onCreate={onCreate}
           onUpdate={onUpdate}
           onSetStatus={onSetStatus}
+          onReorder={onReorder}
           onOpen={(t) => setEditingId(t.id)}
           canCreate={canCreate}
           emptyMessage={emptyMessage}

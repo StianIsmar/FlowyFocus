@@ -116,6 +116,42 @@ export function useTasks(groupId: string | undefined, options: UseTasksOptions =
     if (error) setError(error.message)
   }, [])
 
+  const reorderTasks = useCallback(
+    async (orderedTasks: Task[]) => {
+      // Optimistically update local state with new positions
+      const updated = orderedTasks.map((task, index) => ({
+        ...task,
+        position: index,
+      }))
+      setTasks(updated)
+
+      // Persist only tasks whose position changed
+      const changes = orderedTasks.filter((task, index) => task.position !== index)
+      if (changes.length === 0) return
+
+      // Batch update all changed positions to Supabase
+      try {
+        const updates = changes.map((task) => {
+          const newPosition = orderedTasks.indexOf(task)
+          return supabase.from('tasks').update({ position: newPosition }).eq('id', task.id)
+        })
+        const results = await Promise.all(updates)
+        const hasError = results.some((r) => r.error)
+        if (hasError) {
+          setError('Failed to reorder tasks')
+          // Reload to restore correct state
+          await load()
+        } else {
+          setError(null)
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Reorder failed')
+        await load()
+      }
+    },
+    [load],
+  )
+
   return {
     tasks,
     loading,
@@ -126,6 +162,7 @@ export function useTasks(groupId: string | undefined, options: UseTasksOptions =
     setStatus,
     setSubtasks,
     deleteTask,
+    reorderTasks,
     reload: load,
   }
 }
