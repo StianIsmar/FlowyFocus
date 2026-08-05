@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Star, Trash2, X } from 'lucide-react'
 import type { Priority, Subtask, Task, TaskImage, TaskStatus } from '../types'
 import { STATUS_COLUMNS } from '../types'
 
@@ -196,7 +197,7 @@ export default function TaskEditor({
             }}
           />
           <button className="icon-btn" onClick={onClose} aria-label="Close">
-            ✕
+            <X size={16} />
           </button>
         </div>
 
@@ -209,7 +210,7 @@ export default function TaskEditor({
               aria-pressed={task.is_important}
               onClick={() => onUpdate(task.id, { is_important: !task.is_important })}
             >
-              <span aria-hidden>★</span>
+              <Star size={14} fill={task.is_important ? 'currentColor' : 'none'} aria-hidden />
               {task.is_important ? 'Important' : 'Normal'}
             </button>
           </label>
@@ -270,7 +271,7 @@ export default function TaskEditor({
                     onClick={() => removeImage(image.id)}
                     aria-label="Remove image"
                   >
-                    ✕
+                    <X size={14} />
                   </button>
                 </figure>
               ))}
@@ -303,7 +304,7 @@ export default function TaskEditor({
               </button>
               <span>{s.text}</span>
               <button className="icon-btn ghost sm" onClick={() => removeSub(s.id)}>
-                ✕
+                <X size={14} />
               </button>
             </div>
           ))}
@@ -318,8 +319,9 @@ export default function TaskEditor({
 
         <div className="modal-foot">
           <button className="link-btn danger" onClick={confirmDelete}>
-            Delete task
-          </button>          <button className="btn-primary" onClick={onClose}>
+            <Trash2 size={14} aria-hidden /> Delete task
+          </button>
+          <button className="btn-primary" onClick={onClose}>
             Done
             <span className="enter-hint" aria-hidden>↵</span>
           </button>

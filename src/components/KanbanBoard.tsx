@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Plus } from 'lucide-react'
 import type { Task, TaskStatus } from '../types'
 import { STATUS_COLUMNS } from '../types'
 import TaskCard from './TaskCard'
@@ -74,7 +75,7 @@ export default function KanbanBoard({
                     setDraft('')
                   }}
                 >
-                  + Add task
+                  <Plus size={13} aria-hidden /> Add task
                 </button>
               )}
             </header>
@@ -112,7 +113,7 @@ export default function KanbanBoard({
               ))}
               {colTasks.length === 0 && addingCol !== col.id && canCreate && (
                 <button className="col-empty" onClick={() => setAddingCol(col.id)}>
-                  + Add a task
+                  <Plus size={14} aria-hidden /> Add a task
                 </button>
               )}
             </div>

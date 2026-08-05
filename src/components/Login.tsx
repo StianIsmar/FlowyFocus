@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthProvider'
+import ThemeToggle from './ThemeToggle'
 
 type AuthMode = 'sign-in' | 'sign-up'
 
@@ -45,6 +46,9 @@ export default function Login() {
 
   return (
     <div className="login">
+      <div className="login-theme">
+        <ThemeToggle collapsed />
+      </div>
       <div className="login-shell">
         <div className="login-art" aria-hidden>
           <img src="/CDC08322.jpg" alt="" />
@@ -55,9 +59,9 @@ export default function Login() {
         </div>
         <div className="login-card">
           <div className="login-mark" aria-hidden>
-            ✦
+            FF
           </div>
-          <h1>Focus</h1>
+          <h1>Flowy Focus</h1>
           <p className="login-sub">
             Notes &amp; to-dos, one group at a time. No noise — just what you’re
             working on right now.

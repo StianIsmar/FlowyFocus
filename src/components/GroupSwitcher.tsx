@@ -1,8 +1,10 @@
 import { useState, type FormEvent } from 'react'
+import { ChevronsLeft, ChevronsRight, LayoutDashboard, LogOut, Plus, Star } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../context/AuthProvider'
 import type { Group } from '../types'
 import Pomodoro from './Pomodoro'
+import ThemeToggle from './ThemeToggle'
 
 interface Props {
   groups: Group[]
@@ -36,9 +38,9 @@ export default function GroupSwitcher({ groups, loading, onCreate }: Props) {
           aria-label={collapsed ? 'Expand groups' : 'Collapse groups'}
           title={collapsed ? 'Expand' : 'Collapse'}
         >
-          {collapsed ? '»' : '«'}
+          {collapsed ? <ChevronsRight size={16} /> : <ChevronsLeft size={16} />}
         </button>
-        {!collapsed && <span className="switcher-title">Groups</span>}
+        {!collapsed && <span className="switcher-title">Flowy Focus</span>}
       </div>
 
       <div className="profile">
@@ -67,7 +69,7 @@ export default function GroupSwitcher({ groups, loading, onCreate }: Props) {
           className={({ isActive }) => `group-pill ${isActive ? 'active' : ''}`}
           title="Dashboard"
         >
-          <span className="group-dot ghost">▦</span>
+          <LayoutDashboard className="nav-icon" size={16} aria-hidden />
           {!collapsed && <span className="group-name">Dashboard</span>}
         </NavLink>
 
@@ -76,7 +78,7 @@ export default function GroupSwitcher({ groups, loading, onCreate }: Props) {
           className={({ isActive }) => `group-pill ${isActive ? 'active' : ''}`}
           title="Most important"
         >
-          <span className="group-dot ghost important-dot">★</span>
+          <Star className="nav-icon important" size={16} aria-hidden />
           {!collapsed && <span className="group-name">Most important</span>}
         </NavLink>
 
@@ -106,16 +108,7 @@ export default function GroupSwitcher({ groups, loading, onCreate }: Props) {
           </form>
         ) : (
           <button className="group-add" onClick={() => setAdding(true)} title="New group">
-            <span className="group-add-icon" aria-hidden>
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <path
-                  d="M7 2.5v9M2.5 7h9"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </span>
+            <Plus className="group-add-icon" size={16} aria-hidden />
             {!collapsed && <span className="group-name">New group</span>}
           </button>
         )}
@@ -123,39 +116,12 @@ export default function GroupSwitcher({ groups, loading, onCreate }: Props) {
 
       <div className="switcher-foot">
         <Pomodoro collapsed={collapsed} onRunningChange={setFocusActive} />
-        {!collapsed && (
-          <div className="consistency">
-            <Sparkline />
-            <div className="consistency-label">
-              <small>Good</small>
-              <b>Consistency</b>
-            </div>
-          </div>
-        )}
-        <button className="link-btn foot-signout" onClick={signOut}>
-          Sign out
+        <ThemeToggle collapsed={collapsed} />
+        <button className={`foot-signout ${collapsed ? 'icon-only' : ''}`} onClick={signOut} title="Sign out">
+          <LogOut size={16} aria-hidden />
+          {!collapsed && <span>Sign out</span>}
         </button>
       </div>
     </aside>
-  )
-}
-
-function Sparkline() {
-  return (
-    <svg viewBox="0 0 200 40" preserveAspectRatio="none" aria-hidden>
-      <defs>
-        <linearGradient id="spark" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="#4f7cff" />
-          <stop offset="100%" stopColor="#ff4ecd" />
-        </linearGradient>
-      </defs>
-      <path
-        d="M2 30 C 20 30, 28 12, 46 16 S 78 34, 96 24 S 132 6, 150 18 S 184 28, 198 10"
-        fill="none"
-        stroke="url(#spark)"
-        strokeWidth="3"
-        strokeLinecap="round"
-      />
-    </svg>
   )
 }

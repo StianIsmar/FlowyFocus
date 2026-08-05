@@ -22,6 +22,7 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
 function authRedirectUrl(): string {
+  if (import.meta.env.DEV) return window.location.origin
   return import.meta.env.VITE_AUTH_REDIRECT_URL ?? window.location.origin
 }
 

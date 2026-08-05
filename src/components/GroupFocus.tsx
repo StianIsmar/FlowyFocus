@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { Check, Pencil, Trash2, X } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import type { Group } from '../types'
 import { useAuth } from '../context/AuthProvider'
@@ -129,7 +130,7 @@ export default function GroupFocus({ groups, onUpdateGroup, onDeleteGroup, onTas
                 maxLength={80}
               />
               <button className="group-action" type="submit" disabled={groupActionPending} title="Save group name">
-                ✓
+                <Check size={14} />
               </button>
               <button
                 className="group-action"
@@ -141,7 +142,7 @@ export default function GroupFocus({ groups, onUpdateGroup, onDeleteGroup, onTas
                   setEditingGroupName(false)
                 }}
               >
-                ×
+                <X size={14} />
               </button>
             </form>
           ) : (
@@ -156,7 +157,7 @@ export default function GroupFocus({ groups, onUpdateGroup, onDeleteGroup, onTas
                   title="Edit group name"
                   onClick={() => setEditingGroupName(true)}
                 >
-                  ✎
+                  <Pencil size={13} />
                 </button>
                 <button
                   className="group-action danger"
@@ -165,7 +166,7 @@ export default function GroupFocus({ groups, onUpdateGroup, onDeleteGroup, onTas
                   title="Delete group"
                   onClick={deleteCurrentGroup}
                 >
-                  ×
+                  <Trash2 size={13} />
                 </button>
               </div>
             </div>

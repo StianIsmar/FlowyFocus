@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Columns3, List } from 'lucide-react'
 import type { Subtask, Task, TaskStatus } from '../types'
 import KanbanBoard from './KanbanBoard'
 import TaskListView from './TaskListView'
@@ -45,13 +46,13 @@ export default function TasksView({
             className={view === 'board' ? 'seg-btn active' : 'seg-btn'}
             onClick={() => setView('board')}
           >
-            ▦ Board
+            <Columns3 size={14} aria-hidden /> Board
           </button>
           <button
             className={view === 'list' ? 'seg-btn active' : 'seg-btn'}
             onClick={() => setView('list')}
           >
-            ☰ List
+            <List size={14} aria-hidden /> List
           </button>
         </div>
       </div>

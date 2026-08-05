@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Plus, Trash2 } from 'lucide-react'
 import { useNotes } from '../hooks/useNotes'
 import type { Note } from '../types'
 
@@ -29,7 +30,7 @@ export default function NotesPanel({ groupId, accent }: Props) {
     <div className="notes" style={{ ['--accent' as string]: accent }}>
       <div className="notes-list">
         <button className="btn-primary block" onClick={handleCreate}>
-          + New note
+          <Plus size={15} aria-hidden /> New note
         </button>
         {loading && notes.length === 0 && <div className="muted small pad">Loading…</div>}
         {notes.map((n) => (
@@ -104,7 +105,7 @@ function NoteEditor({
             if (confirm('Delete this note?')) onDelete(note.id)
           }}
         >
-          Delete
+          <Trash2 size={14} aria-hidden /> Delete
         </button>
       </div>
       <textarea

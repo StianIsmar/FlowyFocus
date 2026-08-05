@@ -1,3 +1,4 @@
+import { Star } from 'lucide-react'
 import type { Task } from '../types'
 import { PRIORITY_META } from '../types'
 
@@ -71,7 +72,7 @@ export default function TaskCard({ task, onOpen, onDelete, onToggleImportant, on
             onToggleImportant()
           }}
         >
-          ★
+          <Star size={14} fill={task.is_important ? 'currentColor' : 'none'} aria-hidden />
         </button>
       </div>
 

@@ -56,8 +56,10 @@ See [DECISIONS.md](DECISIONS.md) for the full design rationale.
 3. Copy the Client ID + secret into Supabase:
    **Authentication → Providers → Google** → enable and paste them.
 4. In Supabase **Authentication → URL Configuration**, set the **Site URL** to
-   your Vercel URL (and `http://localhost:5173` while developing — add it under
-   *Redirect URLs*).
+   your Vercel URL. Under **Redirect URLs**, add the local origins you use while
+   developing, including `http://localhost:5173` and `http://localhost:5174`.
+   Supabase falls back to the Site URL when the current local origin is missing,
+   which sends an otherwise successful local login to the published app.
 
 ## 3. Run locally
 
