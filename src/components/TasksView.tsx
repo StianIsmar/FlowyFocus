@@ -1,18 +1,21 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Columns3, List } from 'lucide-react'
-import type { Subtask, Task, TaskStatus } from '../types'
+import type { Group, Subtask, Task, TaskStatus } from '../types'
 import KanbanBoard from './KanbanBoard'
 import TaskListView from './TaskListView'
 import TaskEditor from './TaskEditor'
 
 interface Props {
   tasks: Task[]
+  groups: Group[]
+  viewContext: 'group' | 'important'
   loading: boolean
   error: string | null
   onCreate: (input: Partial<Task> & { title: string }) => Promise<void>
   onUpdate: (id: string, patch: Partial<Task>) => void
   onSetStatus: (task: Task, status: TaskStatus) => void
   onSetSubtasks: (task: Task, subtasks: Subtask[]) => void
+  onMove: (task: Task, destinationGroupId: string) => Promise<boolean>
   onDelete: (id: string) => void
   onReorder?: (tasks: Task[]) => Promise<void>
   canCreate?: boolean
@@ -23,12 +26,15 @@ type View = 'board' | 'list'
 
 export default function TasksView({
   tasks,
+  groups,
+  viewContext,
   loading,
   error,
   onCreate,
   onUpdate,
   onSetStatus,
   onSetSubtasks,
+  onMove,
   onDelete,
   onReorder,
   canCreate = true,
@@ -36,7 +42,23 @@ export default function TasksView({
 }: Props) {
   const [view, setView] = useState<View>('board')
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [moveMessage, setMoveMessage] = useState('')
   const editingTask = editingId ? tasks.find((t) => t.id === editingId) ?? null : null
+
+  useEffect(() => {
+    if (!moveMessage) return
+    const timeout = window.setTimeout(() => setMoveMessage(''), 4000)
+    return () => window.clearTimeout(timeout)
+  }, [moveMessage])
+
+  const moveTask = async (task: Task, destinationGroupId: string) => {
+    const moved = await onMove(task, destinationGroupId)
+    if (moved) {
+      const destination = groups.find((group) => group.id === destinationGroupId)
+      setMoveMessage(`Moved to ${destination?.name ?? 'another group'}`)
+    }
+    return moved
+  }
 
   return (
     <div className="tasks-view">
@@ -55,6 +77,10 @@ export default function TasksView({
             <List size={14} aria-hidden /> List
           </button>
         </div>
+      </div>
+
+      <div className="task-move-announcement" aria-live="polite">
+        {moveMessage}
       </div>
 
       {error && (
@@ -97,9 +123,12 @@ export default function TasksView({
       {editingTask && (
         <TaskEditor
           task={editingTask}
+          groups={groups}
+          viewContext={viewContext}
           onUpdate={onUpdate}
           onSetStatus={onSetStatus}
           onSetSubtasks={onSetSubtasks}
+          onMove={moveTask}
           onDelete={(id) => {
             onDelete(id)
             setEditingId(null)

@@ -110,6 +110,56 @@ export function useTasks(groupId: string | undefined, options: UseTasksOptions =
     [updateTask],
   )
 
+  const moveTask = useCallback(
+    async (task: Task, destinationGroupId: string) => {
+      if (destinationGroupId === task.group_id) return false
+
+      const { data: destinationTasks, error: positionError } = await supabase
+        .from('tasks')
+        .select('position')
+        .eq('group_id', destinationGroupId)
+        .order('position', { ascending: false })
+        .limit(1)
+
+      if (positionError) {
+        setError(positionError.message)
+        return false
+      }
+
+      const destinationPosition = (destinationTasks?.[0]?.position ?? -1) + 1
+      const previousTasks = tasks
+      if (importantOnly) {
+        setTasks((current) =>
+          current.map((item) =>
+            item.id === task.id
+              ? { ...item, group_id: destinationGroupId, position: destinationPosition }
+              : item,
+          ),
+        )
+      }
+
+      const { data, error } = await supabase
+        .from('tasks')
+        .update({ group_id: destinationGroupId, position: destinationPosition })
+        .eq('id', task.id)
+        .select('id')
+        .maybeSingle()
+
+      if (error || !data) {
+        if (importantOnly) setTasks(previousTasks)
+        setError(error?.message ?? 'Could not move the task')
+        return false
+      }
+
+      if (!importantOnly) {
+        setTasks((current) => current.filter((item) => item.id !== task.id))
+      }
+      setError(null)
+      return true
+    },
+    [importantOnly, tasks],
+  )
+
   const deleteTask = useCallback(async (id: string) => {
     setTasks((t) => t.filter((x) => x.id !== id))
     const { error } = await supabase.from('tasks').delete().eq('id', id)
@@ -161,6 +211,7 @@ export function useTasks(groupId: string | undefined, options: UseTasksOptions =
     toggleDone,
     setStatus,
     setSubtasks,
+    moveTask,
     deleteTask,
     reorderTasks,
     reload: load,

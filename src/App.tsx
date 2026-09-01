@@ -60,7 +60,10 @@ function Shell() {
             }
           />
           <Route path="/dashboard" element={<Dashboard groups={groups} stats={stats} loading={loading} />} />
-          <Route path="/important" element={<ImportantFocus onTasksChanged={reloadStats} />} />
+          <Route
+            path="/important"
+            element={<ImportantFocus groups={groups} onTasksChanged={reloadStats} />}
+          />
           <Route
             path="/g/:groupId"
             element={

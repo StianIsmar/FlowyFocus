@@ -39,6 +39,7 @@ export default function GroupFocus({ groups, onUpdateGroup, onDeleteGroup, onTas
     updateTask,
     setStatus,
     setSubtasks,
+    moveTask,
     deleteTask,
     reorderTasks,
   } = useTasks(groupId)
@@ -59,6 +60,11 @@ export default function GroupFocus({ groups, onUpdateGroup, onDeleteGroup, onTas
   const deleteTaskAndSync: typeof deleteTask = async (id) => {
     await deleteTask(id)
     bump()
+  }
+  const moveTaskAndSync: typeof moveTask = async (task, destinationGroupId) => {
+    const moved = await moveTask(task, destinationGroupId)
+    if (moved) bump()
+    return moved
   }
   const reorderTasksAndSync: typeof reorderTasks = async (ordered) => {
     await reorderTasks(ordered)
@@ -201,12 +207,15 @@ export default function GroupFocus({ groups, onUpdateGroup, onDeleteGroup, onTas
       {tab === 'tasks' ? (
         <TasksView
           tasks={tasks}
+          groups={groups}
+          viewContext="group"
           loading={loading}
           error={error}
           onCreate={createTaskAndSync}
           onUpdate={updateTaskAndSync}
           onSetStatus={setStatusAndSync}
           onSetSubtasks={setSubtasks}
+          onMove={moveTaskAndSync}
           onDelete={deleteTaskAndSync}
           onReorder={reorderTasksAndSync}
         />

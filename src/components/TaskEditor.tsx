@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Star, Trash2, X } from 'lucide-react'
-import type { Priority, Subtask, Task, TaskImage, TaskStatus } from '../types'
+import type { Group, Priority, Subtask, Task, TaskImage, TaskStatus } from '../types'
 import { STATUS_COLUMNS } from '../types'
 
 const MAX_IMAGE_EDGE = 1600
@@ -47,18 +47,24 @@ async function fileToTaskImage(file: File): Promise<TaskImage> {
 
 interface Props {
   task: Task
+  groups: Group[]
+  viewContext: 'group' | 'important'
   onUpdate: (id: string, patch: Partial<Task>) => void
   onSetStatus: (task: Task, status: TaskStatus) => void
   onSetSubtasks: (task: Task, subtasks: Subtask[]) => void
+  onMove: (task: Task, destinationGroupId: string) => Promise<boolean>
   onDelete: (id: string) => void
   onClose: () => void
 }
 
 export default function TaskEditor({
   task,
+  groups,
+  viewContext,
   onUpdate,
   onSetStatus,
   onSetSubtasks,
+  onMove,
   onDelete,
   onClose,
 }: Props) {
@@ -66,8 +72,13 @@ export default function TaskEditor({
   const [imageError, setImageError] = useState<string | null>(null)
   const [isAddingImages, setIsAddingImages] = useState(false)
   const [isDropActive, setIsDropActive] = useState(false)
+  const [destinationGroupId, setDestinationGroupId] = useState(task.group_id)
+  const [isMoving, setIsMoving] = useState(false)
+  const [moveError, setMoveError] = useState('')
   const modalRef = useRef<HTMLDivElement>(null)
   const images = task.images ?? []
+  const destinationGroup = groups.find((group) => group.id === destinationGroupId)
+  const hasPendingMove = destinationGroupId !== task.group_id
 
   useEffect(() => {
     modalRef.current?.focus()
@@ -145,6 +156,20 @@ export default function TaskEditor({
     if (confirm('Delete this task?')) onDelete(task.id)
   }
 
+  const confirmMove = async () => {
+    if (!hasPendingMove || !destinationGroup) return
+    setIsMoving(true)
+    setMoveError('')
+    const moved = await onMove(task, destinationGroup.id)
+    setIsMoving(false)
+    if (!moved) {
+      setDestinationGroupId(task.group_id)
+      setMoveError('Couldn’t move the task. Try again.')
+      return
+    }
+    if (viewContext === 'group') onClose()
+  }
+
   const isEditableTarget = (el: EventTarget | null) => {
     const node = el as HTMLElement | null
     if (!node) return false
@@ -155,11 +180,17 @@ export default function TaskEditor({
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
       e.preventDefault()
+      if (hasPendingMove) {
+        setDestinationGroupId(task.group_id)
+        setMoveError('')
+        return
+      }
       onClose()
       return
     }
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
       e.preventDefault()
+      if (hasPendingMove) return
       // Commit any pending field edits (title/description save on blur) before closing.
       ;(document.activeElement as HTMLElement | null)?.blur()
       onClose()
@@ -246,6 +277,45 @@ export default function TaskEditor({
               onChange={(e) => onUpdate(task.id, { due_date: e.target.value || null })}
             />
           </label>
+          <label className="mf">
+            Group
+            <select
+              value={destinationGroupId}
+              disabled={groups.length < 2 || isMoving}
+              onChange={(e) => {
+                setDestinationGroupId(e.target.value)
+                setMoveError('')
+              }}
+            >
+              {groups.map((group) => (
+                <option key={group.id} value={group.id}>
+                  {group.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        {hasPendingMove && destinationGroup && (
+          <div className="task-move-confirm" aria-busy={isMoving}>
+            <span>Move to “{destinationGroup.name}”?</span>
+            <div className="task-move-actions">
+              <button
+                className="link-btn"
+                type="button"
+                disabled={isMoving}
+                onClick={() => setDestinationGroupId(task.group_id)}
+              >
+                Cancel
+              </button>
+              <button className="btn-primary" type="button" disabled={isMoving} onClick={confirmMove}>
+                {isMoving ? 'Moving…' : 'Move task'}
+              </button>
+            </div>
+          </div>
+        )}
+        <div className="task-move-feedback" aria-live="polite">
+          {moveError}
         </div>
 
         <div className="description-box">

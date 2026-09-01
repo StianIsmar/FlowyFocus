@@ -1,12 +1,13 @@
 import { useTasks } from '../hooks/useTasks'
-import type { Subtask, TaskStatus } from '../types'
+import type { Group, Subtask, TaskStatus } from '../types'
 import TasksView from './TasksView'
 
 interface Props {
+  groups: Group[]
   onTasksChanged?: () => void
 }
 
-export default function ImportantFocus({ onTasksChanged }: Props) {
+export default function ImportantFocus({ groups, onTasksChanged }: Props) {
   const {
     tasks,
     loading,
@@ -14,6 +15,7 @@ export default function ImportantFocus({ onTasksChanged }: Props) {
     updateTask,
     setStatus,
     setSubtasks,
+    moveTask,
     deleteTask,
   } = useTasks(undefined, { importantOnly: true })
 
@@ -34,6 +36,11 @@ export default function ImportantFocus({ onTasksChanged }: Props) {
     await deleteTask(id)
     bump()
   }
+  const moveTaskAndSync: typeof moveTask = async (task, destinationGroupId) => {
+    const moved = await moveTask(task, destinationGroupId)
+    if (moved) bump()
+    return moved
+  }
 
   return (
     <div className="focus" style={{ ['--accent' as string]: '#f59e0b' }}>
@@ -50,12 +57,15 @@ export default function ImportantFocus({ onTasksChanged }: Props) {
 
       <TasksView
         tasks={tasks}
+        groups={groups}
+        viewContext="important"
         loading={loading}
         error={error}
         onCreate={async () => {}}
         onUpdate={updateTaskAndSync}
         onSetStatus={setStatusAndSync}
         onSetSubtasks={setSubtasksAndSync}
+        onMove={moveTaskAndSync}
         onDelete={deleteTaskAndSync}
         canCreate={false}
         emptyMessage="No important tasks yet. Mark a task with the star toggle to show it here."
