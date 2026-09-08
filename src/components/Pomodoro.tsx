@@ -1,7 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 
 const FOCUS_SECONDS = 25 * 60
-const LOCK_IN_AUDIO_SRC = '/lock_in.mp3'
+const TRACKS = [
+  { id: 'lock-in', title: 'lock in', src: '/lock_in.mp3' },
+  {
+    id: 'study-music-alpha-waves',
+    title: 'Study music: alpha waves',
+    src: '/study-music-alpha-waves.m4a',
+  },
+] as const
 
 interface Props {
   collapsed?: boolean
@@ -61,6 +68,7 @@ export default function Pomodoro({ collapsed = false, onRunningChange }: Props) 
   const [secondsLeft, setSecondsLeft] = useState(FOCUS_SECONDS)
   const [running, setRunning] = useState(false)
   const [trackPlaying, setTrackPlaying] = useState(false)
+  const [selectedTrackId, setSelectedTrackId] = useState<(typeof TRACKS)[number]['id']>('lock-in')
   const [trackTime, setTrackTime] = useState(0)
   const [trackDuration, setTrackDuration] = useState(0)
   const intervalRef = useRef<number | null>(null)
@@ -127,6 +135,17 @@ export default function Pomodoro({ collapsed = false, onRunningChange }: Props) 
   const progress = 1 - secondsLeft / FOCUS_SECONDS
   const R = 13
   const circ = 2 * Math.PI * R
+  const selectedTrack = TRACKS.find((track) => track.id === selectedTrackId) ?? TRACKS[0]
+
+  useEffect(() => {
+    const audio = audioRef.current
+    if (!audio) return
+    audio.pause()
+    audio.load()
+    setTrackPlaying(false)
+    setTrackTime(0)
+    setTrackDuration(0)
+  }, [selectedTrackId])
 
   const toggle = () => setRunning((r) => !r)
   const reset = () => {
@@ -182,7 +201,7 @@ export default function Pomodoro({ collapsed = false, onRunningChange }: Props) 
       <div className="lock-in-player">
         <audio
           ref={audioRef}
-          src={LOCK_IN_AUDIO_SRC}
+          src={selectedTrack.src}
           preload="metadata"
           onLoadedMetadata={(e) => setTrackDuration(e.currentTarget.duration || 0)}
           onTimeUpdate={(e) => setTrackTime(e.currentTarget.currentTime)}
@@ -197,7 +216,16 @@ export default function Pomodoro({ collapsed = false, onRunningChange }: Props) 
           <span className="lock-in-icon" aria-hidden>♪</span>
           <div className="lock-in-copy">
             <span className="lock-in-label">Music</span>
-            <span className="lock-in-title">lock in</span>
+            <select
+              className="lock-in-select"
+              value={selectedTrack.id}
+              onChange={(e) => setSelectedTrackId(e.currentTarget.value as (typeof TRACKS)[number]['id'])}
+              aria-label="Choose music"
+            >
+              {TRACKS.map((track) => (
+                <option key={track.id} value={track.id}>{track.title}</option>
+              ))}
+            </select>
           </div>
         </div>
         <div className="lock-in-controls">
