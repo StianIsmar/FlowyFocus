@@ -35,6 +35,8 @@ export default function GroupFocus({ groups, onUpdateGroup, onDeleteGroup, onTas
     tasks,
     loading,
     error,
+    saving,
+    retry,
     createTask,
     updateTask,
     setStatus,
@@ -50,12 +52,14 @@ export default function GroupFocus({ groups, onUpdateGroup, onDeleteGroup, onTas
     bump()
   }
   const updateTaskAndSync: typeof updateTask = async (id, patch) => {
-    await updateTask(id, patch)
+    const succeeded = await updateTask(id, patch)
     bump()
+    return succeeded
   }
   const setStatusAndSync: typeof setStatus = async (task, status) => {
-    await setStatus(task, status)
+    const succeeded = await setStatus(task, status)
     bump()
+    return succeeded
   }
   const deleteTaskAndSync: typeof deleteTask = async (id) => {
     await deleteTask(id)
@@ -193,7 +197,7 @@ export default function GroupFocus({ groups, onUpdateGroup, onDeleteGroup, onTas
             className={tab === 'tasks' ? 'tab active' : 'tab'}
             onClick={() => setTab('tasks')}
           >
-            Board
+            Tasks
           </button>
           <button
             className={tab === 'notes' ? 'tab active' : 'tab'}
@@ -211,6 +215,8 @@ export default function GroupFocus({ groups, onUpdateGroup, onDeleteGroup, onTas
           viewContext="group"
           loading={loading}
           error={error}
+          saving={saving}
+          onRetry={retry}
           onCreate={createTaskAndSync}
           onUpdate={updateTaskAndSync}
           onSetStatus={setStatusAndSync}

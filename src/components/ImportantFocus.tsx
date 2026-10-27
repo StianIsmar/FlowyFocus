@@ -12,6 +12,8 @@ export default function ImportantFocus({ groups, onTasksChanged }: Props) {
     tasks,
     loading,
     error,
+    saving,
+    retry,
     updateTask,
     setStatus,
     setSubtasks,
@@ -21,12 +23,14 @@ export default function ImportantFocus({ groups, onTasksChanged }: Props) {
 
   const bump = onTasksChanged ?? (() => {})
   const updateTaskAndSync: typeof updateTask = async (id, patch) => {
-    await updateTask(id, patch)
+    const succeeded = await updateTask(id, patch)
     bump()
+    return succeeded
   }
   const setStatusAndSync: typeof setStatus = async (task, status: TaskStatus) => {
-    await setStatus(task, status)
+    const succeeded = await setStatus(task, status)
     bump()
+    return succeeded
   }
   const setSubtasksAndSync = async (task: Parameters<typeof setSubtasks>[0], subtasks: Subtask[]) => {
     await setSubtasks(task, subtasks)
@@ -61,6 +65,8 @@ export default function ImportantFocus({ groups, onTasksChanged }: Props) {
         viewContext="important"
         loading={loading}
         error={error}
+        saving={saving}
+        onRetry={retry}
         onCreate={async () => {}}
         onUpdate={updateTaskAndSync}
         onSetStatus={setStatusAndSync}

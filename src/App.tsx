@@ -9,6 +9,7 @@ import GroupFocus from './components/GroupFocus'
 import ImportantFocus from './components/ImportantFocus'
 import Dashboard from './components/Dashboard'
 import EmptyState from './components/EmptyState'
+import { WorkbenchProvider } from './context/WorkbenchProvider'
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -23,7 +24,7 @@ export default function App() {
 
   if (!user) return <Login />
 
-  return <Shell />
+  return <WorkbenchProvider><Shell /></WorkbenchProvider>
 }
 
 function Shell() {
@@ -53,13 +54,13 @@ function Shell() {
                   <div className="spinner" aria-label="Loading groups" />
                 </div>
               ) : groups.length > 0 ? (
-                <Navigate to={`/g/${groups[0].id}`} replace />
+                <Navigate to="/dashboard" replace />
               ) : (
                 <EmptyState onCreate={createGroup} loading={loading} />
               )
             }
           />
-          <Route path="/dashboard" element={<Dashboard groups={groups} stats={stats} loading={loading} />} />
+          <Route path="/dashboard" element={<Dashboard groups={groups} stats={stats} loading={loading} onTasksChanged={reloadStats} />} />
           <Route
             path="/important"
             element={<ImportantFocus groups={groups} onTasksChanged={reloadStats} />}

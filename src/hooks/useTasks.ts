@@ -1,21 +1,25 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthProvider'
 import type { Subtask, Task } from '../types'
 
 interface UseTasksOptions {
   importantOnly?: boolean
+  allGroups?: boolean
 }
 
 export function useTasks(groupId: string | undefined, options: UseTasksOptions = {}) {
   const { user } = useAuth()
-  const { importantOnly = false } = options
+  const { importantOnly = false, allGroups = false } = options
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [pendingWrites, setPendingWrites] = useState(0)
+  const retryAction = useRef<(() => Promise<unknown>) | null>(null)
+  const retry = async () => { await retryAction.current?.() }
 
   const load = useCallback(async () => {
-    if (!user || (!groupId && !importantOnly)) {
+    if (!user || (!groupId && !importantOnly && !allGroups)) {
       setTasks([])
       setLoading(false)
       return
@@ -28,26 +32,36 @@ export function useTasks(groupId: string | undefined, options: UseTasksOptions =
       .order('position', { ascending: true })
       .order('created_at', { ascending: true })
 
-    query = importantOnly
-      ? query.eq('user_id', user.id).eq('is_important', true)
-      : query.eq('group_id', groupId)
+    if (importantOnly) query = query.eq('user_id', user.id).eq('is_important', true)
+    else if (groupId) query = query.eq('group_id', groupId)
 
     const { data, error } = await query
-    if (error) setError(error.message)
-    else setTasks(data as Task[])
+    if (error) {
+      setError(error.message)
+      retryAction.current = load
+    }
+    else {
+      setTasks((data ?? []) as Task[])
+      setError(null)
+      retryAction.current = null
+    }
     setLoading(false)
-  }, [groupId, importantOnly, user])
+  }, [groupId, importantOnly, allGroups, user])
 
   useEffect(() => {
     load()
+    const refresh = () => { void load() }
+    window.addEventListener('flowy-tasks-changed', refresh)
+    return () => window.removeEventListener('flowy-tasks-changed', refresh)
   }, [load])
 
   const createTask = useCallback(
     async (input: Partial<Task> & { title: string }) => {
-      if (!user || !groupId) return
+      const destination = groupId ?? input.group_id
+      if (!user || !destination) throw new Error('Choose a group first')
       const payload = {
         user_id: user.id,
-        group_id: groupId,
+        group_id: destination,
         title: input.title,
         description: input.description ?? '',
         priority: input.priority ?? 'medium',
@@ -58,15 +72,18 @@ export function useTasks(groupId: string | undefined, options: UseTasksOptions =
         is_done: (input.status ?? 'todo') === 'done',
         position: tasks.length,
       }
+      setPendingWrites((count) => count + 1)
       const { data, error } = await supabase
         .from('tasks')
         .insert(payload)
         .select()
         .single()
+      setPendingWrites((count) => count - 1)
       if (error) {
         setError(error.message)
-        return
+        throw new Error(error.message)
       }
+      setError(null)
       setTasks((t) => [...t, data as Task])
     },
     [user, groupId, tasks.length],
@@ -74,14 +91,27 @@ export function useTasks(groupId: string | undefined, options: UseTasksOptions =
 
   const updateTask = useCallback(
     async (id: string, patch: Partial<Task>) => {
+      const previous = tasks.find((task) => task.id === id)
+      setPendingWrites((count) => count + 1)
       setTasks((t) => {
         if (importantOnly && patch.is_important === false) return t.filter((x) => x.id !== id)
         return t.map((x) => (x.id === id ? { ...x, ...patch } : x))
       })
-      const { error } = await supabase.from('tasks').update(patch).eq('id', id)
-      if (error) setError(error.message)
+      const { data, error } = await supabase.from('tasks').update(patch).eq('id', id).select('id').maybeSingle()
+      setPendingWrites((count) => count - 1)
+      if (error || !data) {
+        if (previous) setTasks((current) => current.some((task) => task.id === id)
+          ? current.map((task) => task.id === id ? previous : task)
+          : [...current, previous])
+        setError(error?.message ?? 'Task could not be saved. Check your access and try again.')
+        retryAction.current = () => updateTask(id, patch)
+        return false
+      }
+      setError(null)
+      retryAction.current = null
+      return true
     },
-    [importantOnly],
+    [importantOnly, tasks],
   )
 
   const toggleDone = useCallback(
@@ -161,10 +191,17 @@ export function useTasks(groupId: string | undefined, options: UseTasksOptions =
   )
 
   const deleteTask = useCallback(async (id: string) => {
+    const previous = tasks.find((task) => task.id === id)
+    setPendingWrites((count) => count + 1)
     setTasks((t) => t.filter((x) => x.id !== id))
-    const { error } = await supabase.from('tasks').delete().eq('id', id)
-    if (error) setError(error.message)
-  }, [])
+    const { data, error } = await supabase.from('tasks').delete().eq('id', id).select('id').maybeSingle()
+    setPendingWrites((count) => count - 1)
+    if (error || !data) {
+      if (previous) setTasks((current) => [...current, previous])
+      setError(error?.message ?? 'Task could not be deleted. Check your access and try again.')
+      retryAction.current = () => deleteTask(id)
+    } else { setError(null); retryAction.current = null }
+  }, [tasks])
 
   const reorderTasks = useCallback(
     async (orderedTasks: Task[]) => {
@@ -206,6 +243,8 @@ export function useTasks(groupId: string | undefined, options: UseTasksOptions =
     tasks,
     loading,
     error,
+    saving: pendingWrites > 0,
+    retry,
     createTask,
     updateTask,
     toggleDone,

@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { ArrowDown, ArrowUp, Check, Plus, Star, Timer } from 'lucide-react'
+import { useWorkbench } from '../context/WorkbenchProvider'
 import type { Task } from '../types'
 import { PRIORITY_META } from '../types'
 
@@ -34,11 +36,23 @@ export default function TaskListView({
   emptyMessage = 'No tasks yet. Add one above.',
 }: Props) {
   const [draft, setDraft] = useState('')
+  const [saving, setSaving] = useState(false)
+  const { focus } = useWorkbench()
   const [dragId, setDragId] = useState<string | null>(null)
   const [dragOverId, setDragOverId] = useState<string | null>(null)
 
   const open = tasks.filter((t) => t.status !== 'done')
   const done = tasks.filter((t) => t.status === 'done')
+  const now = new Date()
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  const moveBy = (task: Task, offset: number) => {
+    const items = task.status === 'done' ? done : open
+    const index = items.findIndex((item) => item.id === task.id)
+    const target = items[index + offset]
+    if (!target || !onReorder) return
+    const reordered = reorderWithin(items, task.id, target.id)
+    void onReorder(task.status === 'done' ? [...open, ...reordered] : [...reordered, ...done])
+  }
 
   const reorderWithin = (items: Task[], draggedId: string, targetId: string) => {
     const from = items.findIndex((task) => task.id === draggedId)
@@ -70,9 +84,11 @@ export default function TaskListView({
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     const title = draft.trim()
-    if (!title) return
-    setDraft('')
-    await onCreate({ title })
+    if (!title || saving) return
+    setSaving(true)
+    try { await onCreate({ title }); setDraft('') }
+    catch { return }
+    finally { setSaving(false) }
   }
 
   return (
@@ -84,10 +100,11 @@ export default function TaskListView({
             onChange={(e) => setDraft(e.target.value)}
             placeholder="Add a task and press Enter…"
             maxLength={280}
+            aria-label="New task title"
+            disabled={saving}
           />
-          <button className="btn-primary" type="submit">
-            Add
-            <span className="enter-hint" aria-hidden>↵</span>
+          <button className="btn-primary" type="submit" disabled={!draft.trim() || saving}>
+            <Plus size={15} /> {saving ? 'Saving…' : 'Add'}
           </button>
         </form>
       )}
@@ -123,8 +140,10 @@ export default function TaskListView({
             />
             <button className="todo-main" onClick={() => onOpen(t)}>
               <span className="todo-title">{t.title}</span>
-              {t.due_date && <span className="todo-due">{fmtDate(t.due_date)}</span>}
+              {t.due_date && <span className={`todo-due ${t.due_date < today ? 'due-overdue' : ''}`}>{t.due_date < today ? 'Overdue · ' : ''}{fmtDate(t.due_date)}</span>}
             </button>
+            <button className="icon-btn list-focus" title="Start focus session" aria-label={`Focus on ${t.title}`} onClick={() => focus(t, () => onSetStatus(t, 'done'))}><Timer size={16} /></button>
+            {onReorder && <span className="reorder-actions"><button className="icon-btn" title="Move up" aria-label={`Move ${t.title} up`} disabled={open[0].id === t.id} onClick={() => moveBy(t, -1)}><ArrowUp size={13} /></button><button className="icon-btn" title="Move down" aria-label={`Move ${t.title} down`} disabled={open[open.length - 1].id === t.id} onClick={() => moveBy(t, 1)}><ArrowDown size={13} /></button></span>}
             <button
               className={t.is_important ? 'important-toggle active' : 'important-toggle'}
               type="button"
@@ -133,7 +152,7 @@ export default function TaskListView({
               title={t.is_important ? 'Very important' : 'Mark as very important'}
               onClick={() => onUpdate(t.id, { is_important: !t.is_important })}
             >
-              ★
+              <Star size={15} fill={t.is_important ? 'currentColor' : 'none'} />
             </button>
             <span
               className="prio-dot"
@@ -175,7 +194,7 @@ export default function TaskListView({
                   onClick={() => onSetStatus(t, 'todo')}
                   aria-label="Reopen task"
                 >
-                  ✓
+                  <Check size={15} />
                 </button>
                 <button className="todo-main" onClick={() => onOpen(t)}>
                   <span className="todo-title">{t.title}</span>
@@ -188,7 +207,7 @@ export default function TaskListView({
                   title={t.is_important ? 'Very important' : 'Mark as very important'}
                   onClick={() => onUpdate(t.id, { is_important: !t.is_important })}
                 >
-                  ★
+                  <Star size={15} fill={t.is_important ? 'currentColor' : 'none'} />
                 </button>
               </li>
             ))}

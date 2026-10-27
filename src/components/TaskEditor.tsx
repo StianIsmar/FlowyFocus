@@ -1,87 +1,46 @@
 import { useEffect, useRef, useState } from 'react'
-import { Star, Trash2, X } from 'lucide-react'
-import type { Group, Priority, Subtask, Task, TaskImage, TaskStatus } from '../types'
+import { ArrowRight, Check, Timer, Trash2, X } from 'lucide-react'
+import type { Group, Priority, Subtask, Task, TaskStatus } from '../types'
 import { STATUS_COLUMNS } from '../types'
-
-const MAX_IMAGE_EDGE = 1600
-const IMAGE_QUALITY = 0.82
-
-function readImage(file: File): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file)
-    const img = new Image()
-    img.onload = () => {
-      URL.revokeObjectURL(url)
-      resolve(img)
-    }
-    img.onerror = () => {
-      URL.revokeObjectURL(url)
-      reject(new Error('Could not read image'))
-    }
-    img.src = url
-  })
-}
-
-async function fileToTaskImage(file: File): Promise<TaskImage> {
-  const img = await readImage(file)
-  const scale = Math.min(1, MAX_IMAGE_EDGE / Math.max(img.naturalWidth, img.naturalHeight))
-  const canvas = document.createElement('canvas')
-  canvas.width = Math.max(1, Math.round(img.naturalWidth * scale))
-  canvas.height = Math.max(1, Math.round(img.naturalHeight * scale))
-
-  const ctx = canvas.getContext('2d')
-  if (!ctx) throw new Error('Could not prepare image')
-  ctx.fillStyle = '#0f1115'
-  ctx.fillRect(0, 0, canvas.width, canvas.height)
-  ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-
-  const dataUrl = canvas.toDataURL('image/jpeg', IMAGE_QUALITY)
-  return {
-    id: crypto.randomUUID(),
-    name: file.name || 'Pasted image',
-    type: 'image/jpeg',
-    dataUrl,
-    created_at: new Date().toISOString(),
-  }
-}
+import { useWorkbench } from '../context/WorkbenchProvider'
 
 interface Props {
   task: Task
-  groups: Group[]
-  viewContext: 'group' | 'important'
   onUpdate: (id: string, patch: Partial<Task>) => void
   onSetStatus: (task: Task, status: TaskStatus) => void
   onSetSubtasks: (task: Task, subtasks: Subtask[]) => void
-  onMove: (task: Task, destinationGroupId: string) => Promise<boolean>
   onDelete: (id: string) => void
   onClose: () => void
+  groups?: Group[]
+  onMove?: (task: Task, groupId: string) => Promise<boolean>
+  error?: string | null
+  saving?: boolean
+  onRetry?: () => Promise<void>
 }
 
 export default function TaskEditor({
   task,
-  groups,
-  viewContext,
   onUpdate,
   onSetStatus,
   onSetSubtasks,
-  onMove,
   onDelete,
   onClose,
+  groups = [],
+  onMove,
+  error,
+  saving = false,
+  onRetry,
 }: Props) {
   const [newSub, setNewSub] = useState('')
-  const [imageError, setImageError] = useState<string | null>(null)
-  const [isAddingImages, setIsAddingImages] = useState(false)
-  const [isDropActive, setIsDropActive] = useState(false)
-  const [destinationGroupId, setDestinationGroupId] = useState(task.group_id)
-  const [isMoving, setIsMoving] = useState(false)
-  const [moveError, setMoveError] = useState('')
+  const [destination, setDestination] = useState('')
+  const [moving, setMoving] = useState(false)
   const modalRef = useRef<HTMLDivElement>(null)
-  const images = task.images ?? []
-  const destinationGroup = groups.find((group) => group.id === destinationGroupId)
-  const hasPendingMove = destinationGroupId !== task.group_id
+  const { focus } = useWorkbench()
 
   useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null
     modalRef.current?.focus()
+    return () => { if (previous?.isConnected) previous.focus() }
   }, [])
 
   const addSub = (e: React.FormEvent) => {
@@ -99,75 +58,8 @@ export default function TaskEditor({
   const removeSub = (id: string) =>
     onSetSubtasks(task, task.subtasks.filter((s) => s.id !== id))
 
-  const addImages = async (files: File[]) => {
-    const imageFiles = files.filter((file) => file.type.startsWith('image/'))
-    if (!imageFiles.length) return
-    setImageError(null)
-    setIsAddingImages(true)
-    try {
-      const nextImages = await Promise.all(imageFiles.map(fileToTaskImage))
-      onUpdate(task.id, { images: [...images, ...nextImages] })
-    } catch {
-      setImageError('Could not add that image. Try copying it again.')
-    } finally {
-      setIsAddingImages(false)
-    }
-  }
-
-  const removeImage = (id: string) => {
-    onUpdate(task.id, { images: images.filter((image) => image.id !== id) })
-  }
-
-  const onPaste = (e: React.ClipboardEvent) => {
-    const files = Array.from(e.clipboardData.files)
-    if (!files.some((file) => file.type.startsWith('image/'))) return
-    e.preventDefault()
-    void addImages(files)
-  }
-
-  const onImageDragOver = (e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    e.dataTransfer.dropEffect = 'copy'
-    if (!isDropActive) setIsDropActive(true)
-  }
-
-  const onImageDragLeave = (e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setIsDropActive(false)
-  }
-
-  const onImageDrop = (e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setIsDropActive(false)
-
-    const files = Array.from(e.dataTransfer.files)
-    if (!files.length) return
-    if (!files.some((file) => file.type.startsWith('image/'))) {
-      setImageError('Drop an image file here.')
-      return
-    }
-    void addImages(files)
-  }
-
   const confirmDelete = () => {
-    if (confirm('Delete this task?')) onDelete(task.id)
-  }
-
-  const confirmMove = async () => {
-    if (!hasPendingMove || !destinationGroup) return
-    setIsMoving(true)
-    setMoveError('')
-    const moved = await onMove(task, destinationGroup.id)
-    setIsMoving(false)
-    if (!moved) {
-      setDestinationGroupId(task.group_id)
-      setMoveError('Couldn’t move the task. Try again.')
-      return
-    }
-    if (viewContext === 'group') onClose()
+    onDelete(task.id)
   }
 
   const isEditableTarget = (el: EventTarget | null) => {
@@ -178,28 +70,13 @@ export default function TaskEditor({
   }
 
   const onKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      e.preventDefault()
-      if (hasPendingMove) {
-        setDestinationGroupId(task.group_id)
-        setMoveError('')
-        return
-      }
-      onClose()
-      return
-    }
-    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-      e.preventDefault()
-      if (hasPendingMove) return
-      // Commit any pending field edits (title/description save on blur) before closing.
-      ;(document.activeElement as HTMLElement | null)?.blur()
-      onClose()
-      return
-    }
-    if (e.key === 'Enter' && !isEditableTarget(e.target)) {
-      e.preventDefault()
-      onClose()
-      return
+    if (e.key === 'Escape') { e.preventDefault(); onClose(); return }
+    if (e.key === 'Tab') {
+      const controls = Array.from(modalRef.current?.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex="0"]') ?? []).filter((element) => element.getClientRects().length > 0)
+      const first = controls[0]
+      const last = controls[controls.length - 1]
+      if (e.shiftKey && (document.activeElement === first || document.activeElement === modalRef.current)) { e.preventDefault(); last?.focus() }
+      else if (!e.shiftKey && (document.activeElement === last || document.activeElement === modalRef.current)) { e.preventDefault(); first?.focus() }
     }
     if ((e.key === 'Backspace' || e.key === 'Delete') && !isEditableTarget(e.target)) {
       e.preventDefault()
@@ -211,15 +88,18 @@ export default function TaskEditor({
     <div className="modal-overlay" onClick={onClose}>
       <div
         className="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Edit ${task.title}`}
         ref={modalRef}
         tabIndex={-1}
         onKeyDown={onKeyDown}
-        onPaste={onPaste}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-head">
           <input
             className="modal-title"
+            aria-label="Task title"
             defaultValue={task.title}
             maxLength={280}
             onBlur={(e) => {
@@ -228,23 +108,17 @@ export default function TaskEditor({
             }}
           />
           <button className="icon-btn" onClick={onClose} aria-label="Close">
-            <X size={16} />
+            <X size={18} />
           </button>
         </div>
 
+        <div className="modal-options">
+          <label><input type="checkbox" checked={task.is_important} onChange={(event) => onUpdate(task.id, { is_important: event.target.checked })} />Important</label>
+          <span className="save-state" role="status">{saving ? 'Saving…' : error ? 'Not saved' : 'All changes saved'}</span>
+        </div>
+        {error && <div className="error-banner" role="alert">{error}{onRetry && <button className="link-btn" onClick={onRetry} disabled={saving}>Retry</button>}</div>}
+
         <div className="modal-grid">
-          <label className="mf important-field">
-            Very important
-            <button
-              className={task.is_important ? 'important-toggle field active' : 'important-toggle field'}
-              type="button"
-              aria-pressed={task.is_important}
-              onClick={() => onUpdate(task.id, { is_important: !task.is_important })}
-            >
-              <Star size={14} fill={task.is_important ? 'currentColor' : 'none'} aria-hidden />
-              {task.is_important ? 'Important' : 'Normal'}
-            </button>
-          </label>
           <label className="mf">
             Status
             <select
@@ -277,104 +151,30 @@ export default function TaskEditor({
               onChange={(e) => onUpdate(task.id, { due_date: e.target.value || null })}
             />
           </label>
-          <label className="mf">
-            Group
-            <select
-              value={destinationGroupId}
-              disabled={groups.length < 2 || isMoving}
-              onChange={(e) => {
-                setDestinationGroupId(e.target.value)
-                setMoveError('')
-              }}
-            >
-              {groups.map((group) => (
-                <option key={group.id} value={group.id}>
-                  {group.name}
-                </option>
-              ))}
-            </select>
-          </label>
         </div>
 
-        {hasPendingMove && destinationGroup && (
-          <div className="task-move-confirm" aria-busy={isMoving}>
-            <span>Move to “{destinationGroup.name}”?</span>
-            <div className="task-move-actions">
-              <button
-                className="link-btn"
-                type="button"
-                disabled={isMoving}
-                onClick={() => setDestinationGroupId(task.group_id)}
-              >
-                Cancel
-              </button>
-              <button className="btn-primary" type="button" disabled={isMoving} onClick={confirmMove}>
-                {isMoving ? 'Moving…' : 'Move task'}
-              </button>
-            </div>
-          </div>
-        )}
-        <div className="task-move-feedback" aria-live="polite">
-          {moveError}
-        </div>
-
-        <div className="description-box">
-          <textarea
-            className="modal-desc"
-            defaultValue={task.description}
-            placeholder="Add details or paste a picture…"
-            rows={3}
-            onBlur={(e) => {
-              if (e.target.value !== task.description)
-                onUpdate(task.id, { description: e.target.value })
-            }}
-          />
-          {images.length > 0 && (
-            <div className="task-image-grid">
-              {images.map((image) => (
-                <figure key={image.id} className="task-image">
-                  <a href={image.dataUrl} target="_blank" rel="noreferrer" aria-label="Open image">
-                    <img src={image.dataUrl} alt={image.name} />
-                  </a>
-                  <button
-                    className="icon-btn ghost sm image-remove"
-                    onClick={() => removeImage(image.id)}
-                    aria-label="Remove image"
-                  >
-                    <X size={14} />
-                  </button>
-                </figure>
-              ))}
-            </div>
-          )}
-          <div
-            className={`paste-target ${isDropActive ? 'drop-active' : ''}`}
-            tabIndex={0}
-            onPaste={onPaste}
-            onDragEnter={onImageDragOver}
-            onDragOver={onImageDragOver}
-            onDragLeave={onImageDragLeave}
-            onDrop={onImageDrop}
-          >
-            {isAddingImages
-              ? 'Adding picture…'
-              : isDropActive
-                ? 'Drop picture here'
-                : 'Paste a picture here'}
-          </div>
-          {imageError && <p className="image-error">{imageError}</p>}
-        </div>
+        <textarea
+          className="modal-desc"
+          aria-label="Task description"
+          defaultValue={task.description}
+          placeholder="Add details…"
+          rows={3}
+          onBlur={(e) => {
+            if (e.target.value !== task.description)
+              onUpdate(task.id, { description: e.target.value })
+          }}
+        />
 
         <div className="modal-subs">
           <div className="section-label">Checklist</div>
           {task.subtasks.map((s) => (
             <div key={s.id} className={`subtask ${s.done ? 'done' : ''}`}>
-              <button className="check sm" onClick={() => toggleSub(s.id)}>
-                {s.done && '✓'}
+              <button className="check sm" aria-label={`${s.done ? 'Uncheck' : 'Complete'} ${s.text}`} aria-pressed={s.done} onClick={() => toggleSub(s.id)}>
+                {s.done && <Check size={13} />}
               </button>
               <span>{s.text}</span>
-              <button className="icon-btn ghost sm" onClick={() => removeSub(s.id)}>
-                <X size={14} />
+              <button className="icon-btn ghost sm" aria-label={`Remove ${s.text}`} title="Remove checklist item" onClick={() => removeSub(s.id)}>
+                <X size={13} />
               </button>
             </div>
           ))}
@@ -383,17 +183,33 @@ export default function TaskEditor({
               value={newSub}
               onChange={(e) => setNewSub(e.target.value)}
               placeholder="Add checklist item…"
+              aria-label="New checklist item"
             />
+            <button className="icon-btn" aria-label="Add checklist item" title="Add checklist item" disabled={!newSub.trim()}><Check size={16} /></button>
           </form>
         </div>
 
+        {onMove && groups.some((group) => group.id !== task.group_id) && <form className="move-task-form" onSubmit={async (event) => {
+          event.preventDefault()
+          if (!destination || moving) return
+          setMoving(true)
+          try { if (await onMove(task, destination)) onClose() }
+          finally { setMoving(false) }
+        }}>
+          <select aria-label="Move to group" value={destination} onChange={(event) => setDestination(event.target.value)} disabled={moving}>
+            <option value="">Move to group…</option>
+            {groups.filter((group) => group.id !== task.group_id).map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
+          </select>
+          <button className="btn-primary" disabled={!destination || moving}><ArrowRight size={15} />{moving ? 'Moving…' : 'Move'}</button>
+        </form>}
+
         <div className="modal-foot">
           <button className="link-btn danger" onClick={confirmDelete}>
-            <Trash2 size={14} aria-hidden /> Delete task
+            <Trash2 size={14} /> Delete task
           </button>
+          {task.status !== 'done' && <button className="link-btn" onClick={() => { focus(task, () => onSetStatus(task, 'done')); onClose() }}><Timer size={15} /> Start focus</button>}
           <button className="btn-primary" onClick={onClose}>
             Done
-            <span className="enter-hint" aria-hidden>↵</span>
           </button>
         </div>
       </div>

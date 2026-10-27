@@ -1,10 +1,10 @@
-import { useState, type FormEvent } from 'react'
-import { ChevronsLeft, ChevronsRight, LayoutDashboard, LogOut, Plus, Star } from 'lucide-react'
+import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
+import { ArrowLeftToLine, ArrowRightFromLine, LayoutDashboard, LogOut, Plus, Star } from 'lucide-react'
 import { useAuth } from '../context/AuthProvider'
 import type { Group } from '../types'
-import Pomodoro from './Pomodoro'
 import ThemeToggle from './ThemeToggle'
+import Pomodoro from './Pomodoro'
 
 interface Props {
   groups: Group[]
@@ -20,7 +20,7 @@ export default function GroupSwitcher({ groups, loading, onCreate }: Props) {
   const [name, setName] = useState('')
   const [focusActive, setFocusActive] = useState(false)
 
-  const submit = async (e: FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     const trimmed = name.trim()
     if (!trimmed) return
@@ -30,7 +30,7 @@ export default function GroupSwitcher({ groups, loading, onCreate }: Props) {
   }
 
   return (
-    <aside className={`switcher ${collapsed ? 'is-collapsed' : ''} ${focusActive ? 'focus-active' : ''}`}>
+    <aside className={`switcher ${collapsed ? 'is-collapsed' : ''} ${focusActive ? 'focus-active' : ''}`} aria-label="Workspace navigation">
       <div className="switcher-head">
         <button
           className="icon-btn"
@@ -38,9 +38,9 @@ export default function GroupSwitcher({ groups, loading, onCreate }: Props) {
           aria-label={collapsed ? 'Expand groups' : 'Collapse groups'}
           title={collapsed ? 'Expand' : 'Collapse'}
         >
-          {collapsed ? <ChevronsRight size={16} /> : <ChevronsLeft size={16} />}
+          {collapsed ? <ArrowRightFromLine size={17} /> : <ArrowLeftToLine size={17} />}
         </button>
-        {!collapsed && <span className="switcher-title">Flowy Focus</span>}
+        {!collapsed && <span className="switcher-title">flowyfocus<span className="brand-period">.</span></span>}
       </div>
 
       <div className="profile">
@@ -67,20 +67,13 @@ export default function GroupSwitcher({ groups, loading, onCreate }: Props) {
         <NavLink
           to="/dashboard"
           className={({ isActive }) => `group-pill ${isActive ? 'active' : ''}`}
-          title="Dashboard"
+          title="Today"
         >
-          <LayoutDashboard className="nav-icon" size={16} aria-hidden />
-          {!collapsed && <span className="group-name">Dashboard</span>}
+          <LayoutDashboard size={17} />
+          {!collapsed && <span className="group-name">Today</span>}
         </NavLink>
-
-        <NavLink
-          to="/important"
-          className={({ isActive }) => `group-pill ${isActive ? 'active' : ''}`}
-          title="Most important"
-        >
-          <Star className="nav-icon important" size={16} aria-hidden />
-          {!collapsed && <span className="group-name">Most important</span>}
-        </NavLink>
+        <NavLink to="/important" className={({ isActive }) => `group-pill ${isActive ? 'active' : ''}`} title="Important"><Star size={17} />{!collapsed && <span className="group-name">Important</span>}</NavLink>
+        {!collapsed && <span className="nav-section-label">Groups</span>}
 
         {loading && groups.length === 0 && <div className="muted small">Loading…</div>}
         {groups.map((g) => (
@@ -102,13 +95,16 @@ export default function GroupSwitcher({ groups, loading, onCreate }: Props) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Group name…"
+              aria-label="New group name"
               onBlur={() => !name && setAdding(false)}
               maxLength={80}
             />
           </form>
         ) : (
-          <button className="group-add" onClick={() => setAdding(true)} title="New group">
-            <Plus className="group-add-icon" size={16} aria-hidden />
+          <button className="group-add" onClick={() => { setCollapsed(false); setAdding(true) }} title="New group">
+            <span className="group-add-icon" aria-hidden>
+              <Plus size={16} />
+            </span>
             {!collapsed && <span className="group-name">New group</span>}
           </button>
         )}
@@ -117,9 +113,8 @@ export default function GroupSwitcher({ groups, loading, onCreate }: Props) {
       <div className="switcher-foot">
         <Pomodoro collapsed={collapsed} onRunningChange={setFocusActive} />
         <ThemeToggle collapsed={collapsed} />
-        <button className={`foot-signout ${collapsed ? 'icon-only' : ''}`} onClick={signOut} title="Sign out">
-          <LogOut size={16} aria-hidden />
-          {!collapsed && <span>Sign out</span>}
+        <button className="sidebar-signout" onClick={signOut} title="Sign out" aria-label="Sign out">
+          <LogOut size={16} />{!collapsed && <span>Sign out</span>}
         </button>
       </div>
     </aside>

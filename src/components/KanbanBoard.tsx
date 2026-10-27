@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus, X } from 'lucide-react'
 import type { Task, TaskStatus } from '../types'
 import { STATUS_COLUMNS } from '../types'
 import TaskCard from './TaskCard'
@@ -8,7 +8,6 @@ interface Props {
   tasks: Task[]
   loading: boolean
   onCreate: (input: Partial<Task> & { title: string }) => Promise<void>
-  onUpdate: (id: string, patch: Partial<Task>) => void
   onSetStatus: (task: Task, status: TaskStatus) => void
   onOpen: (task: Task) => void
   onDelete: (id: string) => void
@@ -16,27 +15,23 @@ interface Props {
   emptyMessage?: string
 }
 
-export default function KanbanBoard({
-  tasks,
-  loading,
-  onCreate,
-  onUpdate,
-  onSetStatus,
-  onOpen,
-  onDelete,
-  canCreate = true,
-  emptyMessage = 'No tasks here yet.',
-}: Props) {
+export default function KanbanBoard({ tasks, loading, onCreate, onSetStatus, onOpen, onDelete, canCreate = true, emptyMessage = 'No tasks' }: Props) {
   const [addingCol, setAddingCol] = useState<TaskStatus | null>(null)
   const [draft, setDraft] = useState('')
   const [dragId, setDragId] = useState<string | null>(null)
   const [overCol, setOverCol] = useState<TaskStatus | null>(null)
+  const [saving, setSaving] = useState(false)
 
   const submitAdd = async (status: TaskStatus) => {
     const title = draft.trim()
-    setDraft('')
-    setAddingCol(null)
-    if (title) await onCreate({ title, status })
+    if (!title || saving) return
+    setSaving(true)
+    try {
+      await onCreate({ title, status })
+      setDraft('')
+      setAddingCol(null)
+    } catch { return }
+    finally { setSaving(false) }
   }
 
   const drop = (status: TaskStatus) => {
@@ -67,17 +62,15 @@ export default function KanbanBoard({
                 <span className="col-dot" style={{ background: col.color, color: col.color }} />
                 {col.label} <span className="col-count">({colTasks.length})</span>
               </span>
-              {canCreate && (
-                <button
-                  className="col-add"
-                  onClick={() => {
-                    setAddingCol(col.id)
-                    setDraft('')
-                  }}
-                >
-                  <Plus size={13} aria-hidden /> Add task
-                </button>
-              )}
+              {canCreate && <button
+                className="col-add"
+                onClick={() => {
+                  setAddingCol(col.id)
+                  setDraft('')
+                }}
+              >
+                <Plus size={13} /> Add task
+              </button>}
             </header>
 
             {addingCol === col.id && (
@@ -93,9 +86,13 @@ export default function KanbanBoard({
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
                   placeholder="Task title, then Enter…"
-                  onBlur={() => submitAdd(col.id)}
+                  aria-label="New task title"
+                  disabled={saving}
+                  onKeyDown={(event) => { if (event.key === 'Escape') setAddingCol(null) }}
                   maxLength={280}
                 />
+                <button className="icon-btn" type="submit" aria-label="Save new task" title="Add task" disabled={!draft.trim() || saving}><Plus size={16} /></button>
+                <button className="icon-btn" type="button" aria-label="Cancel new task" title="Cancel" disabled={saving} onClick={() => setAddingCol(null)}><X size={15} /></button>
               </form>
             )}
 
@@ -106,15 +103,13 @@ export default function KanbanBoard({
                   task={t}
                   onOpen={() => onOpen(t)}
                   onDelete={onDelete}
-                  onToggleImportant={() => onUpdate(t.id, { is_important: !t.is_important })}
+                  onSetStatus={onSetStatus}
                   onDragStart={() => setDragId(t.id)}
                   onDragEnd={() => setDragId(null)}
                 />
               ))}
-              {colTasks.length === 0 && addingCol !== col.id && canCreate && (
-                <button className="col-empty" onClick={() => setAddingCol(col.id)}>
-                  <Plus size={14} aria-hidden /> Add a task
-                </button>
+              {colTasks.length === 0 && addingCol !== col.id && (
+                canCreate ? <button className="col-empty" onClick={() => setAddingCol(col.id)}><Plus size={14} /> Add a task</button> : <p className="section-empty">{emptyMessage}</p>
               )}
             </div>
           </section>
@@ -122,7 +117,6 @@ export default function KanbanBoard({
       })}
 
       {loading && tasks.length === 0 && <div className="muted small pad">Loading…</div>}
-      {!loading && tasks.length === 0 && !canCreate && <div className="board-empty muted small pad">{emptyMessage}</div>}
     </div>
   )
 }

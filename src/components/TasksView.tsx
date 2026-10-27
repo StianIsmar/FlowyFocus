@@ -1,96 +1,92 @@
-import { useEffect, useState } from 'react'
-import { Columns3, List } from 'lucide-react'
+import { useState } from 'react'
+import { AlertCircle, Columns3, List } from 'lucide-react'
 import type { Group, Subtask, Task, TaskStatus } from '../types'
 import KanbanBoard from './KanbanBoard'
 import TaskListView from './TaskListView'
 import TaskEditor from './TaskEditor'
+import { useWorkbench } from '../context/WorkbenchProvider'
 
 interface Props {
   tasks: Task[]
-  groups: Group[]
-  viewContext: 'group' | 'important'
+  groups?: Group[]
+  viewContext?: string
+  canCreate?: boolean
+  emptyMessage?: string
+  onMove?: (task: Task, groupId: string) => Promise<boolean>
+  onReorder?: (tasks: Task[]) => Promise<void>
   loading: boolean
   error: string | null
+  saving?: boolean
+  onRetry?: () => Promise<void>
   onCreate: (input: Partial<Task> & { title: string }) => Promise<void>
   onUpdate: (id: string, patch: Partial<Task>) => void
   onSetStatus: (task: Task, status: TaskStatus) => void
   onSetSubtasks: (task: Task, subtasks: Subtask[]) => void
-  onMove: (task: Task, destinationGroupId: string) => Promise<boolean>
   onDelete: (id: string) => void
-  onReorder?: (tasks: Task[]) => Promise<void>
-  canCreate?: boolean
-  emptyMessage?: string
 }
 
 type View = 'board' | 'list'
 
 export default function TasksView({
-  tasks,
-  groups,
-  viewContext,
+  tasks: allTasks,
   loading,
   error,
+  saving = false,
+  onRetry,
   onCreate,
   onUpdate,
   onSetStatus,
   onSetSubtasks,
-  onMove,
   onDelete,
-  onReorder,
+  groups = [],
   canCreate = true,
   emptyMessage,
+  onMove,
+  onReorder,
 }: Props) {
-  const [view, setView] = useState<View>('board')
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [moveMessage, setMoveMessage] = useState('')
-  const editingTask = editingId ? tasks.find((t) => t.id === editingId) ?? null : null
-
-  useEffect(() => {
-    if (!moveMessage) return
-    const timeout = window.setTimeout(() => setMoveMessage(''), 4000)
-    return () => window.clearTimeout(timeout)
-  }, [moveMessage])
-
-  const moveTask = async (task: Task, destinationGroupId: string) => {
-    const moved = await onMove(task, destinationGroupId)
-    if (moved) {
-      const destination = groups.find((group) => group.id === destinationGroupId)
-      setMoveMessage(`Moved to ${destination?.name ?? 'another group'}`)
-    }
-    return moved
+  const { pendingIds, remove } = useWorkbench()
+  const tasks = allTasks.filter((task) => !pendingIds.includes(task.id))
+  const deleteWithUndo = (id: string) => {
+    const task = tasks.find((item) => item.id === id)
+    if (task) remove(task, () => onDelete(id))
   }
+  const [view, setView] = useState<View>(() => {
+    try { return localStorage.getItem('flowy-task-view') === 'list' ? 'list' : 'board' }
+    catch { return 'board' }
+  })
+  const chooseView = (next: View) => {
+    setView(next)
+    try { localStorage.setItem('flowy-task-view', next) } catch {}
+  }
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const editingTask = editingId ? tasks.find((t) => t.id === editingId) ?? null : null
 
   return (
     <div className="tasks-view">
       <div className="view-toolbar">
-        <div className="seg">
+        <div className="seg" role="group" aria-label="Task view">
           <button
             className={view === 'board' ? 'seg-btn active' : 'seg-btn'}
-            onClick={() => setView('board')}
+            aria-pressed={view === 'board'}
+            onClick={() => chooseView('board')}
           >
-            <Columns3 size={14} aria-hidden /> Board
+            <Columns3 size={15} /> Board
           </button>
           <button
             className={view === 'list' ? 'seg-btn active' : 'seg-btn'}
-            onClick={() => setView('list')}
+            aria-pressed={view === 'list'}
+            onClick={() => chooseView('list')}
           >
-            <List size={14} aria-hidden /> List
+            <List size={15} /> List
           </button>
         </div>
-      </div>
-
-      <div className="task-move-announcement" aria-live="polite">
-        {moveMessage}
+        <span className="save-state" role="status">{saving ? 'Saving…' : error ? 'Not saved' : 'All changes saved'}</span>
       </div>
 
       {error && (
-        <div className="error-banner">
-          ⚠ Couldn’t save: {error}
-          <span className="error-hint">
-            {' '}
-            Re-run <code>supabase/schema.sql</code> in Supabase so the task <code>status</code>{' '}
-            and <code>is_important</code> columns exist.
-          </span>
+        <div className="error-banner" role="alert">
+          <AlertCircle size={16} /> Couldn’t save: {error}
+          {onRetry && <button className="link-btn" disabled={saving} onClick={onRetry}>Retry</button>}
         </div>
       )}
 
@@ -99,12 +95,11 @@ export default function TasksView({
           tasks={tasks}
           loading={loading}
           onCreate={onCreate}
-          onUpdate={onUpdate}
-          onSetStatus={onSetStatus}
-          onOpen={(t) => setEditingId(t.id)}
-          onDelete={onDelete}
           canCreate={canCreate}
           emptyMessage={emptyMessage}
+          onSetStatus={onSetStatus}
+          onOpen={(t) => setEditingId(t.id)}
+          onDelete={deleteWithUndo}
         />
       ) : (
         <TaskListView
@@ -112,11 +107,11 @@ export default function TasksView({
           loading={loading}
           onCreate={onCreate}
           onUpdate={onUpdate}
-          onSetStatus={onSetStatus}
           onReorder={onReorder}
-          onOpen={(t) => setEditingId(t.id)}
           canCreate={canCreate}
           emptyMessage={emptyMessage}
+          onSetStatus={onSetStatus}
+          onOpen={(t) => setEditingId(t.id)}
         />
       )}
 
@@ -124,13 +119,15 @@ export default function TasksView({
         <TaskEditor
           task={editingTask}
           groups={groups}
-          viewContext={viewContext}
+          onMove={onMove}
+          error={error}
+          saving={saving}
+          onRetry={onRetry}
           onUpdate={onUpdate}
           onSetStatus={onSetStatus}
           onSetSubtasks={onSetSubtasks}
-          onMove={moveTask}
           onDelete={(id) => {
-            onDelete(id)
+            deleteWithUndo(id)
             setEditingId(null)
           }}
           onClose={() => setEditingId(null)}
