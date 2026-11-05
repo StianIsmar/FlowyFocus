@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { ArrowDown, ArrowUp, Check, Plus, Star, Timer } from 'lucide-react'
 import { useWorkbench } from '../context/WorkbenchProvider'
 import type { Task } from '../types'
-import { PRIORITY_META } from '../types'
+import PriorityBadge from './PriorityBadge'
 
 interface Props {
   tasks: Task[]
@@ -49,7 +49,7 @@ export default function TaskListView({
     const items = task.status === 'done' ? done : open
     const index = items.findIndex((item) => item.id === task.id)
     const target = items[index + offset]
-    if (!target || !onReorder) return
+    if (!target || !onReorder || task.priority !== target.priority) return
     const reordered = reorderWithin(items, task.id, target.id)
     void onReorder(task.status === 'done' ? [...open, ...reordered] : [...reordered, ...done])
   }
@@ -57,7 +57,7 @@ export default function TaskListView({
   const reorderWithin = (items: Task[], draggedId: string, targetId: string) => {
     const from = items.findIndex((task) => task.id === draggedId)
     const to = items.findIndex((task) => task.id === targetId)
-    if (from < 0 || to < 0 || from === to) return items
+    if (from < 0 || to < 0 || from === to || items[from].priority !== items[to].priority) return items
 
     const next = [...items]
     const [moved] = next.splice(from, 1)
@@ -143,7 +143,7 @@ export default function TaskListView({
               {t.due_date && <span className={`todo-due ${t.due_date < today ? 'due-overdue' : ''}`}>{t.due_date < today ? 'Overdue · ' : ''}{fmtDate(t.due_date)}</span>}
             </button>
             <button className="icon-btn list-focus" title="Start focus session" aria-label={`Focus on ${t.title}`} onClick={() => focus(t, () => onSetStatus(t, 'done'))}><Timer size={16} /></button>
-            {onReorder && <span className="reorder-actions"><button className="icon-btn" title="Move up" aria-label={`Move ${t.title} up`} disabled={open[0].id === t.id} onClick={() => moveBy(t, -1)}><ArrowUp size={13} /></button><button className="icon-btn" title="Move down" aria-label={`Move ${t.title} down`} disabled={open[open.length - 1].id === t.id} onClick={() => moveBy(t, 1)}><ArrowDown size={13} /></button></span>}
+            {onReorder && <span className="reorder-actions"><button className="icon-btn" title="Move up within this priority" aria-label={`Move ${t.title} up`} disabled={open[open.indexOf(t) - 1]?.priority !== t.priority} onClick={() => moveBy(t, -1)}><ArrowUp size={13} /></button><button className="icon-btn" title="Move down within this priority" aria-label={`Move ${t.title} down`} disabled={open[open.indexOf(t) + 1]?.priority !== t.priority} onClick={() => moveBy(t, 1)}><ArrowDown size={13} /></button></span>}
             <button
               className={t.is_important ? 'important-toggle active' : 'important-toggle'}
               type="button"
@@ -154,13 +154,7 @@ export default function TaskListView({
             >
               <Star size={15} fill={t.is_important ? 'currentColor' : 'none'} />
             </button>
-            <span
-              className="prio-dot"
-              style={{ color: PRIORITY_META[t.priority].color }}
-              title={`${PRIORITY_META[t.priority].label} priority`}
-            >
-              ●
-            </span>
+            <PriorityBadge priority={t.priority} />
           </li>
         ))}
       </ul>
@@ -209,6 +203,7 @@ export default function TaskListView({
                 >
                   <Star size={15} fill={t.is_important ? 'currentColor' : 'none'} />
                 </button>
+                <PriorityBadge priority={t.priority} />
               </li>
             ))}
           </ul>

@@ -1666,6 +1666,7 @@ button:disabled { cursor: not-allowed; }
 :where(button, a, input, textarea, select, summary):focus-visible { outline: 2px solid var(--action); outline-offset: 3px; }
 .app { background: linear-gradient(180deg, color-mix(in srgb, var(--line) 20%, transparent), transparent 220px), var(--bg); }
 .focus-area { min-width: 0; scrollbar-gutter: stable; }
+.mobile-group-switcher { display: none; }
 .switcher { background: var(--bg-elev); backdrop-filter: none; width: 230px; }
 .switcher-head { min-height: 74px; padding: 18px 16px; }
 .switcher-title { font-size: 19px; font-weight: 600; text-transform: none; color: var(--text); }
@@ -1722,6 +1723,8 @@ button:disabled { cursor: not-allowed; }
 .seg { padding: 3px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg-elev-2); gap: 2px; }
 .seg-btn { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; min-height: 32px; border-radius: 4px; background: transparent; color: var(--muted); border: 1px solid transparent; }
 .view-toolbar { justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.view-options { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.density-control .seg-btn { justify-content: center; width: 32px; padding: 6px; }
 .save-state { color: var(--muted); font-size: 11px; }
 .focus, .dashboard { max-width: 1180px; width: 100%; margin: 0 auto; padding: 38px 40px 160px; }
 .focus-header { align-items: flex-end; border-bottom: 1px solid var(--line); padding-bottom: 24px; margin-bottom: 24px; }
@@ -1769,8 +1772,18 @@ button:disabled { cursor: not-allowed; }
 .cp-bar { background: var(--action); }
 .card-foot { margin-top: 16px; gap: 8px; align-items: center; }
 .date-pill { padding: 0; border: 0; background: none; font-size: 10px; color: var(--muted); white-space: normal; }
-.priority-label { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; color: var(--muted); margin-left: auto; }
-.priority-label i { width: 5px; height: 5px; border-radius: 50%; }
+.priority-badge { display: inline-block; flex-shrink: 0; width: 10px; height: 10px; border-radius: 50%; }
+.card-foot > .priority-badge { margin-left: auto; }
+.tasks-view[data-density='compact'] .view-toolbar { margin-bottom: 10px; }
+.tasks-view[data-density='compact'] .col-head { padding-bottom: 8px; margin-bottom: 8px; }
+.tasks-view[data-density='compact'] .card { padding: 10px; gap: 6px; }
+.tasks-view[data-density='compact'] .card-title { font-size: 13px; line-height: 1.35; }
+.tasks-view[data-density='compact'] .card-sub { margin-top: 3px; }
+.tasks-view[data-density='compact'] .card-progress { margin-top: 0; gap: 4px; }
+.tasks-view[data-density='compact'] .card-foot { margin-top: 0; }
+.tasks-view[data-density='compact'] .todo-list { gap: 4px; }
+.tasks-view[data-density='compact'] .todo-row { padding: 6px 10px; gap: 8px; }
+.tasks-view[data-density='compact'] .list-add { margin-bottom: 10px; }
 .task-actions { position: absolute; z-index: 10; right: 0; top: 28px; width: min(205px, 100%); padding: 5px; background: var(--bg-elev); border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 6px 20px #00000016; }
 .task-actions button { display: flex; gap: 9px; align-items: center; width: 100%; min-height: 36px; border: 0; background: none; padding: 7px 9px; text-align: left; color: var(--text); font-size: 12px; border-radius: 3px; }
 .task-actions button:hover { background: var(--bg-elev-2); }
@@ -1897,6 +1910,9 @@ button:disabled { cursor: not-allowed; }
   .work-columns { gap: 24px; }
 }
 @media (max-width: 720px) {
+  .mobile-group-switcher { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 10px; padding: 10px 18px; border-bottom: 1px solid var(--line); background: var(--bg-elev); }
+  .mobile-group-switcher label { color: var(--muted); font-size: 11px; flex-shrink: 0; }
+  .mobile-group-switcher select { flex: 1; width: 0; min-height: 36px; font-size: 13px; text-overflow: ellipsis; }
   .switcher, .switcher.is-collapsed { width: 60px; }
   .switcher .switcher-title, .switcher .profile-meta, .switcher .nav-section-label, .switcher .theme-toggle span, .switcher .sidebar-signout span { display: none; }
   .switcher-head, .switcher.is-collapsed .switcher-head { padding: 18px 13px; }

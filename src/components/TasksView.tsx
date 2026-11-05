@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { AlertCircle, Columns3, List } from 'lucide-react'
+import { AlertCircle, Columns3, List, Rows2, Rows3 } from 'lucide-react'
 import type { Group, Subtask, Task, TaskStatus } from '../types'
+import { compareTaskPriority } from '../types'
 import KanbanBoard from './KanbanBoard'
 import TaskListView from './TaskListView'
 import TaskEditor from './TaskEditor'
@@ -26,6 +27,7 @@ interface Props {
 }
 
 type View = 'board' | 'list'
+type Density = 'compact' | 'comfortable'
 
 export default function TasksView({
   tasks: allTasks,
@@ -45,7 +47,7 @@ export default function TasksView({
   onReorder,
 }: Props) {
   const { pendingIds, remove } = useWorkbench()
-  const tasks = allTasks.filter((task) => !pendingIds.includes(task.id))
+  const tasks = allTasks.filter((task) => !pendingIds.includes(task.id)).sort(compareTaskPriority)
   const deleteWithUndo = (id: string) => {
     const task = tasks.find((item) => item.id === id)
     if (task) remove(task, () => onDelete(id))
@@ -58,12 +60,21 @@ export default function TasksView({
     setView(next)
     try { localStorage.setItem('flowy-task-view', next) } catch {}
   }
+  const [density, setDensity] = useState<Density>(() => {
+    try { return localStorage.getItem('flowy-task-density') === 'comfortable' ? 'comfortable' : 'compact' }
+    catch { return 'compact' }
+  })
+  const chooseDensity = (next: Density) => {
+    setDensity(next)
+    try { localStorage.setItem('flowy-task-density', next) } catch {}
+  }
   const [editingId, setEditingId] = useState<string | null>(null)
   const editingTask = editingId ? tasks.find((t) => t.id === editingId) ?? null : null
 
   return (
-    <div className="tasks-view">
+    <div className="tasks-view" data-density={density}>
       <div className="view-toolbar">
+        <div className="view-options">
         <div className="seg" role="group" aria-label="Task view">
           <button
             className={view === 'board' ? 'seg-btn active' : 'seg-btn'}
@@ -79,6 +90,11 @@ export default function TasksView({
           >
             <List size={15} /> List
           </button>
+        </div>
+        <div className="seg density-control" role="group" aria-label="Task density">
+          <button className={`seg-btn ${density === 'compact' ? 'active' : ''}`} title="Compact" aria-label="Compact" aria-pressed={density === 'compact'} onClick={() => chooseDensity('compact')}><Rows3 size={16} /></button>
+          <button className={`seg-btn ${density === 'comfortable' ? 'active' : ''}`} title="Comfortable" aria-label="Comfortable" aria-pressed={density === 'comfortable'} onClick={() => chooseDensity('comfortable')}><Rows2 size={16} /></button>
+        </div>
         </div>
         <span className="save-state" role="status">{saving ? 'Saving…' : error ? 'Not saved' : 'All changes saved'}</span>
       </div>

@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Check, MoreHorizontal, Pencil, Timer, Trash2 } from 'lucide-react'
 import type { Task, TaskStatus } from '../types'
-import { PRIORITY_META, STATUS_COLUMNS } from '../types'
+import { STATUS_COLUMNS } from '../types'
 import { useWorkbench } from '../context/WorkbenchProvider'
+import PriorityBadge from './PriorityBadge'
 
 interface Props {
   task: Task
@@ -47,6 +48,6 @@ export default function TaskCard({ task, onOpen, onDelete, onSetStatus, onDragSt
       </div>}
     </div>
     {total > 0 && <div className="card-progress"><div className="cp-row"><span className="cp-label">Checklist</span><span className="cp-count">{doneCount}/{total}</span></div><div className="cp-track" role="progressbar" aria-label="Checklist completion" aria-valuenow={doneCount} aria-valuemin={0} aria-valuemax={total}><div className="cp-bar" style={{ width: `${doneCount / total * 100}%` }} /></div></div>}
-    <div className="card-foot"><span className={overdue ? 'date-pill due-overdue' : 'date-pill'}>{due ? `${overdue ? 'Overdue · ' : ''}${due}` : ''}</span><span className="priority-label"><i style={{ background: PRIORITY_META[task.priority].color }} />{PRIORITY_META[task.priority].label}</span></div>
+    <div className="card-foot"><span className={overdue ? 'date-pill due-overdue' : 'date-pill'}>{due ? `${overdue ? 'Overdue · ' : ''}${due}` : ''}</span><PriorityBadge priority={task.priority} /></div>
   </article>
 }

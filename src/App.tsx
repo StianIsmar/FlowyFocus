@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from './context/AuthProvider'
 import { useGroups } from './hooks/useGroups'
 import { useTaskStats } from './hooks/useTaskStats'
@@ -31,6 +31,10 @@ function Shell() {
   const { groups, loading, createGroup, updateGroup, deleteGroup } = useGroups()
   const { stats, reload: reloadStats } = useTaskStats()
   const location = useLocation()
+  const navigate = useNavigate()
+  const activeWorkspace = groups.some((group) => location.pathname === `/g/${group.id}`)
+    ? location.pathname
+    : location.pathname === '/important' ? '/important' : '/dashboard'
 
   useEffect(() => {
     reloadStats()
@@ -45,6 +49,23 @@ function Shell() {
         onCreate={createGroup}
       />
       <main className="focus-area">
+        <div className="mobile-group-switcher">
+          <label htmlFor="mobile-workspace">Workspace</label>
+          <select
+            id="mobile-workspace"
+            value={activeWorkspace}
+            onChange={(event) => navigate(event.target.value)}
+            disabled={loading}
+          >
+            <option value="/dashboard">Today</option>
+            <option value="/important">Important</option>
+            {groups.length > 0 && (
+              <optgroup label="Groups">
+                {groups.map((group) => <option key={group.id} value={`/g/${group.id}`}>{group.name}</option>)}
+              </optgroup>
+            )}
+          </select>
+        </div>
         <Routes>
           <Route
             path="/"

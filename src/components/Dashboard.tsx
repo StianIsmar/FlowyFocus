@@ -2,9 +2,11 @@ import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, Check, Circle, Plus, Timer } from 'lucide-react'
 import type { Group, Task } from '../types'
+import { compareTaskPriority } from '../types'
 import { useTasks } from '../hooks/useTasks'
 import { useWorkbench } from '../context/WorkbenchProvider'
 import TaskEditor from './TaskEditor'
+import PriorityBadge from './PriorityBadge'
 
 interface Props {
   groups: Group[]
@@ -24,8 +26,8 @@ export default function Dashboard({ groups, loading: groupsLoading, onTasksChang
   const tasks = allTasks.filter((task) => !pendingIds.includes(task.id) && groups.some((group) => group.id === task.group_id))
   const now = new Date()
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-  const open = tasks.filter((task) => task.status !== 'done')
-  const due = open.filter((task) => task.due_date && task.due_date <= today).sort((first, second) => first.due_date!.localeCompare(second.due_date!))
+  const open = tasks.filter((task) => task.status !== 'done').sort(compareTaskPriority)
+  const due = open.filter((task) => task.due_date && task.due_date <= today).sort((first, second) => compareTaskPriority(first, second) || first.due_date!.localeCompare(second.due_date!))
   const continuing = open.filter((task) => task.status === 'in_progress')
   const overdue = due.filter((task) => task.due_date! < today).length
   const editing = tasks.find((task) => task.id === editingId)
@@ -53,7 +55,7 @@ export default function Dashboard({ groups, loading: groupsLoading, onTasksChang
             const group = groups.find((item) => item.id === task.group_id)
             return <li className="work-task" key={task.id}>
               <button className="icon-btn task-complete" title={`Complete ${task.title}`} aria-label={`Complete ${task.title}`} onClick={() => complete(task)}><Circle size={19} /><Check className="check-hover" size={14} /></button>
-              <button className="work-task-main" onClick={() => setEditingId(task.id)}><strong>{task.title}</strong><span><i className="group-dot" style={{ background: group?.color }} />{group?.name}{task.due_date && <span className={task.due_date < today ? 'due-overdue' : ''}>{task.due_date < today ? 'Overdue · ' : ''}{task.due_date === today ? 'Today' : new Date(`${task.due_date}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>}</span></button>
+              <button className="work-task-main" onClick={() => setEditingId(task.id)}><strong>{task.title}</strong><span><i className="group-dot" style={{ background: group?.color }} />{group?.name}{task.due_date && <span className={task.due_date < today ? 'due-overdue' : ''}>{task.due_date < today ? 'Overdue · ' : ''}{task.due_date === today ? 'Today' : new Date(`${task.due_date}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>}<PriorityBadge priority={task.priority} /></span></button>
               <button className="icon-btn" aria-label={`Focus on ${task.title}`} title="Start focus session" onClick={() => focus(task, () => complete(task))}><Timer size={17} /></button>
             </li>
           })}

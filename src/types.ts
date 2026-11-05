@@ -59,6 +59,12 @@ export const PRIORITY_META: Record<Priority, { label: string; color: string }> =
   low: { label: 'Low', color: '#3b82f6' },
 }
 
+const PRIORITY_RANK: Record<Priority, number> = { high: 0, medium: 1, low: 2 }
+
+export function compareTaskPriority(first: Pick<Task, 'priority'>, second: Pick<Task, 'priority'>) {
+  return PRIORITY_RANK[first.priority] - PRIORITY_RANK[second.priority]
+}
+
 export const STATUS_COLUMNS: { id: TaskStatus; label: string; color: string }[] = [
   { id: 'todo', label: 'To do', color: '#f59e0b' },
   { id: 'in_progress', label: 'In progress', color: '#3b82f6' },
